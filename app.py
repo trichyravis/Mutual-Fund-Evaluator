@@ -1232,6 +1232,402 @@ Corpus = Σ Units(m) × NAV(latest)</div><div style="color:#8892b0;font-size:.72
     """)
 
 
+# ─── PORTFOLIO WEIGHTS TAB ───────────────────────────────────────────────────
+def portfolio_weights_tab(funds):
+    import numpy as np
+
+    G  = C["gold"]; BL = C["blue"]; MD = C["mid"]; CA = C["card"]
+    TX = C["txt"];  MU = C["muted"]; LB = C["lb"]; GR = C["grn"]; RD = C["red"]
+
+    # ── HEADER ────────────────────────────────────────────────────────────────
+    st.html(f"""
+    <div style="background:linear-gradient(135deg,{BL},{MD});
+      border:2px solid {G};border-radius:14px;padding:1.2rem 2rem;
+      margin-bottom:1.2rem;user-select:none;">
+      <div style="color:{G};-webkit-text-fill-color:{G};
+        font-size:1.4rem;font-weight:900;margin-bottom:.3rem;">
+        ⚖️ Portfolio Weights Creator
+      </div>
+      <div style="color:{LB};-webkit-text-fill-color:{LB};font-size:.9rem;">
+        Assign weights to your selected funds · See blended portfolio performance vs individual funds
+      </div>
+    </div>
+    """)
+
+    if not funds:
+        st.warning("⚠️ Run the analysis first — select funds in the sidebar and click ▶ ANALYSE PORTFOLIO.")
+        return
+
+    n = len(funds)
+
+    # ── WEIGHT INPUT SECTION ──────────────────────────────────────────────────
+    slabel("⚖️", "Step 1 — Choose a Weighting Strategy", "Select a preset or enter custom weights")
+
+    strategy = st.radio(
+        "Weighting Strategy",
+        ["Equal Weight (1/N)", "Risk Parity (1/σᵢ)", "Custom Weights"],
+        horizontal=True, label_visibility="collapsed", key="wt_strat"
+    )
+
+    # Compute default weights per strategy
+    if strategy == "Equal Weight (1/N)":
+        default_w = [round(1/n, 4)] * n
+    elif strategy == "Risk Parity (1/σᵢ)":
+        sigmas = [f["m"]["vol"] for f in funds]
+        inv_sig = [1/s for s in sigmas]
+        total = sum(inv_sig)
+        default_w = [round(x/total, 4) for x in inv_sig]
+    else:
+        default_w = [round(1/n, 4)] * n
+
+    # Weight sliders / inputs
+    st.html(f"""
+    <div style="color:{G};-webkit-text-fill-color:{G};font-weight:700;
+      font-size:.85rem;margin:.8rem 0 .4rem;user-select:none;">
+      ✏️ Adjust Weights — must sum to 100%
+    </div>
+    """)
+
+    weight_cols = st.columns(n)
+    raw_weights = []
+    for i, (f, col) in enumerate(zip(funds, weight_cols)):
+        with col:
+            st.html(f"""
+            <div style="background:{CA};border:1px solid {f['c']};
+              border-radius:8px;padding:.5rem .7rem;margin-bottom:.3rem;
+              text-align:center;user-select:none;">
+              <div style="width:10px;height:10px;border-radius:50%;background:{f['c']};
+                margin:0 auto .3rem;box-shadow:0 0 5px {f['c']};"></div>
+              <div style="color:{f['c']};-webkit-text-fill-color:{f['c']};
+                font-size:.7rem;font-weight:700;white-space:nowrap;
+                overflow:hidden;text-overflow:ellipsis;"
+                title="{f['name']}">
+                {f['name'][:22]}{'…' if len(f['name'])>22 else ''}
+              </div>
+            </div>
+            """)
+            w = st.number_input(
+                f"w{i+1}", min_value=0.0, max_value=100.0,
+                value=round(default_w[i]*100, 1), step=0.5,
+                format="%.1f", key=f"wt_{i}",
+                label_visibility="collapsed"
+            )
+            raw_weights.append(w)
+
+    # Weight validation
+    total_w = sum(raw_weights)
+    w_pct = [w/100 for w in raw_weights]
+    weights_ok = abs(total_w - 100.0) < 0.11
+
+    # Weight status bar
+    bar_color = GR if weights_ok else RD
+    bar_msg   = "✅ Weights sum to 100% — ready to compute" if weights_ok else f"⚠️ Weights sum to {total_w:.1f}% — must equal 100%"
+
+    # Visual weight bar
+    bar_segs = "".join([
+        f'<div style="width:{w:.1f}%;background:{f["c"]};height:100%;'
+        f'display:inline-block;" title="{f["name"][:25]}: {w:.1f}%"></div>'
+        for f, w in zip(funds, raw_weights) if w > 0
+    ])
+    st.html(f"""
+    <div style="margin:.6rem 0;user-select:none;">
+      <div style="background:{CA};border:1px solid {bar_color};border-radius:8px;
+        padding:.5rem .9rem;display:flex;justify-content:space-between;align-items:center;
+        margin-bottom:.5rem;">
+        <span style="color:{bar_color};-webkit-text-fill-color:{bar_color};
+          font-size:.82rem;font-weight:700;">{bar_msg}</span>
+        <span style="color:{MU};-webkit-text-fill-color:{MU};font-size:.78rem;">
+          Total: <b style="color:{TX};-webkit-text-fill-color:{TX};">{total_w:.1f}%</b>
+        </span>
+      </div>
+      <div style="height:14px;background:{CA};border-radius:6px;
+        overflow:hidden;border:1px solid {MD};">
+        {bar_segs}
+      </div>
+      <div style="display:flex;gap:16px;margin-top:.4rem;flex-wrap:wrap;">
+        {"".join([f'<div style="display:flex;align-items:center;gap:5px;"><div style="width:10px;height:10px;border-radius:2px;background:{f[chr(34)+chr(99)+chr(34)]};"></div><span style="color:{MU};-webkit-text-fill-color:{MU};font-size:.72rem;">{f[chr(34)+"name"+chr(34)][:22]}: {w:.1f}%</span></div>' for f,w in zip(funds,raw_weights)])}
+      </div>
+    </div>
+    """)
+
+    if not weights_ok:
+        st.info(f"💡 Tip: Adjust sliders so they sum to exactly 100%. Currently {total_w:.1f}%")
+        return
+
+    # ── COMPUTE PORTFOLIO ─────────────────────────────────────────────────────
+    slabel("📊", "Step 2 — Blended Portfolio Analytics",
+           "Weighted combination of all selected funds")
+
+    # Align all NAV series to common dates
+    nav_series = [f["m"]["nav"] for f in funds]
+    combined   = pd.concat(nav_series, axis=1, join="inner")
+    combined.columns = [f["name"][:25] for f in funds]
+    combined = combined.dropna()
+
+    if len(combined) < 20:
+        st.error("❌ Insufficient overlapping NAV dates across selected funds.")
+        return
+
+    # Indexed NAVs (base 100)
+    indexed = combined / combined.iloc[0] * 100
+
+    # Weighted portfolio index
+    port_idx = (indexed * w_pct).sum(axis=1)
+
+    # Portfolio daily returns
+    port_ret = port_idx.pct_change().dropna()
+
+    # Individual daily returns
+    indiv_ret = combined.pct_change().dropna()
+
+    # Portfolio metrics
+    nyrs  = (port_idx.index[-1] - port_idx.index[0]).days / 365.25
+    tot   = (port_idx.iloc[-1] / port_idx.iloc[0]) - 1
+    cagr  = (1 + tot) ** (1 / nyrs) - 1
+    vol   = port_ret.std() * np.sqrt(252)
+    shr   = (cagr - 0.065) / vol if vol > 0 else 0
+    dd    = (port_idx - port_idx.cummax()) / port_idx.cummax()
+    mxdd  = dd.min()
+
+    # Weighted average metrics (for comparison)
+    wa_cagr = sum(w * f["m"]["cagr"] for w, f in zip(w_pct, funds))
+    wa_vol  = sum(w * f["m"]["vol"]  for w, f in zip(w_pct, funds))
+    div_ben = (wa_vol - vol) / wa_vol * 100  # diversification benefit %
+
+    # ── PORTFOLIO METRIC CARDS ────────────────────────────────────────────────
+    m1, m2, m3, m4, m5 = st.columns(5)
+    metric_data = [
+        (m1, "Portfolio CAGR",      fp(cagr),     fp(wa_cagr),     "vs Wtd Avg"),
+        (m2, "Portfolio Volatility", fp(vol),      fp(wa_vol),      "vs Wtd Avg"),
+        (m3, "Sharpe Ratio",        f"{shr:.2f}",  "Rf=6.5%",       ""),
+        (m4, "Max Drawdown",        fp(mxdd),      "",              ""),
+        (m5, "Diversif. Benefit",   f"{div_ben:.1f}%", "σ reduction","vs simple avg"),
+    ]
+    for col, label, val, sub, sub2 in metric_data:
+        is_good = True
+        if "CAGR" in label:     is_good = cagr > wa_cagr
+        if "Volatility" in label: is_good = vol < wa_vol
+        if "Drawdown" in label:  is_good = True
+        if "Benefit" in label:   is_good = div_ben > 0
+        vc = GR if is_good else RD
+        if "Sharpe" in label:
+            vc = GR if shr > 1 else (G if shr > 0 else RD)
+        if "Drawdown" in label:
+            vc = RD
+        with col:
+            st.html(f"""
+            <div style="background:{CA};border:1px solid {MD};
+              border-radius:10px;padding:.8rem;text-align:center;user-select:none;">
+              <div style="color:{MU};-webkit-text-fill-color:{MU};
+                font-size:.62rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
+                {label}
+              </div>
+              <div style="color:{vc};-webkit-text-fill-color:{vc};
+                font-size:1.3rem;font-weight:900;margin-bottom:3px;">
+                {val}
+              </div>
+              {"" if not sub else f'<div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.68rem;">{sub}</div>'}
+              {"" if not sub2 else f'<div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.65rem;">{sub2}</div>'}
+            </div>
+            """)
+
+    st.html(f"""<div style="height:1px;background:linear-gradient(90deg,
+      transparent,{G},transparent);margin:.8rem 0;"></div>""")
+
+    # ── CHARTS ────────────────────────────────────────────────────────────────
+    tab_a, tab_b, tab_c, tab_d = st.tabs([
+        "📈 Growth Comparison", "📉 Drawdown", "🥧 Weight Breakdown", "📋 Weight Report"
+    ])
+
+    with tab_a:
+        fig = go.Figure()
+        for f, w in zip(funds, w_pct):
+            idx_s = indexed[f["name"][:25]]
+            fig.add_trace(go.Scatter(
+                x=idx_s.index, y=np.round(idx_s.values, 2),
+                name=f"{f['name'][:22]} ({w*100:.0f}%)",
+                line=dict(color=f["c"], width=1.6, dash="dot"),
+                opacity=0.7,
+                hovertemplate=f"<b>{f['name'][:25]}</b><br>%{{x|%d %b %Y}}<br>%{{y:.1f}}<extra></extra>"
+            ))
+        fig.add_trace(go.Scatter(
+            x=port_idx.index, y=np.round(port_idx.values, 2),
+            name="⚖️ Weighted Portfolio",
+            line=dict(color=G, width=3),
+            hovertemplate="<b>Portfolio</b><br>%{x|%d %b %Y}<br>%{y:.1f}<extra></extra>"
+        ))
+        fig.update_layout(**PL("📈  Blended Portfolio vs Individual Funds (Indexed to 100)"))
+        fig.update_yaxes(title_text="Indexed NAV")
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+    with tab_b:
+        fig2 = go.Figure()
+        for f, w in zip(funds, w_pct):
+            idx_s = indexed[f["name"][:25]]
+            dd_i  = (idx_s - idx_s.cummax()) / idx_s.cummax() * 100
+            fig2.add_trace(go.Scatter(
+                x=dd_i.index, y=np.round(dd_i.values, 2),
+                name=f"{f['name'][:22]} ({w*100:.0f}%)",
+                line=dict(color=f["c"], width=1.5, dash="dot"),
+                opacity=0.65,
+                hovertemplate=f"<b>{f['name'][:25]}</b><br>DD: %{{y:.2f}}%<extra></extra>"
+            ))
+        port_dd = (port_idx - port_idx.cummax()) / port_idx.cummax() * 100
+        fig2.add_trace(go.Scatter(
+            x=port_dd.index, y=np.round(port_dd.values, 2),
+            name="⚖️ Weighted Portfolio",
+            fill="tozeroy",
+            line=dict(color=G, width=2.5),
+            hovertemplate="<b>Portfolio DD</b>: %{y:.2f}%<extra></extra>"
+        ))
+        fig2.update_layout(**PL("📉  Portfolio Drawdown vs Individual Funds"))
+        fig2.update_yaxes(title_text="Drawdown %")
+        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+
+    with tab_c:
+        pc1, pc2 = st.columns([1, 1])
+        with pc1:
+            # Pie chart
+            fig3 = go.Figure(go.Pie(
+                labels=[f["name"][:28] for f in funds],
+                values=w_pct,
+                hole=0.52,
+                marker=dict(
+                    colors=[f["c"] for f in funds],
+                    line=dict(color=CA, width=2)
+                ),
+                textfont=dict(color=TX, size=11),
+                hovertemplate="<b>%{label}</b><br>Weight: %{percent}<extra></extra>"
+            ))
+            fig3.add_annotation(
+                text=f"<b>{n} Funds</b>",
+                x=0.5, y=0.5, font=dict(color=G, size=14),
+                showarrow=False
+            )
+            fig3.update_layout(
+                height=360,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter", color=TX),
+                title=dict(text="🥧  Allocation Breakdown", font=dict(color=G, size=13), x=0.01),
+                legend=dict(bgcolor="rgba(17,34,64,.85)", bordercolor=MD,
+                            borderwidth=1, font=dict(color=TX, size=10)),
+                margin=dict(l=10, r=10, t=40, b=10)
+            )
+            st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
+
+        with pc2:
+            # Volatility contribution bar
+            vol_contrib = [w * f["m"]["vol"] * 100 for w, f in zip(w_pct, funds)]
+            fig4 = go.Figure(go.Bar(
+                x=[f["name"][:22] for f in funds],
+                y=vol_contrib,
+                marker_color=[f["c"] for f in funds],
+                text=[f"{v:.1f}%" for v in vol_contrib],
+                textposition="outside",
+                textfont=dict(color=TX),
+                hovertemplate="<b>%{x}</b><br>Vol contribution: %{y:.2f}%<extra></extra>"
+            ))
+            fig4.add_hline(y=wa_vol*100, line_dash="dash", line_color=MU,
+                           annotation_text=f"Wtd Avg σ={wa_vol*100:.1f}%",
+                           annotation_font=dict(color=MU))
+            fig4.update_layout(
+                height=360,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(17,34,64,.55)",
+                font=dict(family="Inter", color=TX),
+                title=dict(text="📊  Volatility Contribution by Fund (wᵢ × σᵢ)",
+                           font=dict(color=G, size=13), x=0.01),
+                xaxis=dict(tickfont=dict(color=MU, size=9), gridcolor="rgba(0,77,128,.3)"),
+                yaxis=dict(tickfont=dict(color=MU), gridcolor="rgba(0,77,128,.3)",
+                           title_text="Vol contribution %", title_font=dict(color=MU)),
+                margin=dict(l=42, r=16, t=42, b=60),
+                showlegend=False
+            )
+            st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar": False})
+
+            # Diversification benefit callout
+            div_clr = GR if div_ben > 5 else (G if div_ben > 0 else RD)
+            st.html(f"""
+            <div style="background:{CA};border:1px solid {div_clr};
+              border-radius:8px;padding:.7rem 1rem;margin-top:.3rem;text-align:center;
+              user-select:none;">
+              <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.7rem;">
+                Diversification Benefit
+              </div>
+              <div style="color:{div_clr};-webkit-text-fill-color:{div_clr};
+                font-size:1.4rem;font-weight:900;">{div_ben:.1f}%</div>
+              <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.7rem;">
+                Portfolio σ ({fp(vol)}) vs Weighted Avg σ ({fp(wa_vol)})
+              </div>
+            </div>
+            """)
+
+    with tab_d:
+        slabel("📋", "Weight Report — Full Comparison",
+               "Portfolio vs each individual fund")
+
+        # Build report table
+        rows = []
+        for f, w in zip(funds, w_pct):
+            m = f["m"]
+            rows.append({
+                "Fund": f["name"][:40],
+                "Weight": f"{w*100:.1f}%",
+                "Wtd CAGR": fp(w * m["cagr"]),
+                "Fund CAGR": fp(m["cagr"]),
+                "Fund σ": fp(m["vol"]),
+                "Wtd σ": fp(w * m["vol"]),
+                "Sharpe": f"{m['sharpe']:.2f}",
+                "Max DD": fp(m["mxdd"]),
+            })
+        # Add portfolio row
+        rows.append({
+            "Fund": "⚖️ BLENDED PORTFOLIO",
+            "Weight": "100%",
+            "Wtd CAGR": fp(cagr),
+            "Fund CAGR": fp(cagr),
+            "Fund σ": fp(vol),
+            "Wtd σ": fp(vol),
+            "Sharpe": f"{shr:.2f}",
+            "Max DD": fp(mxdd),
+        })
+        df_rep = pd.DataFrame(rows).set_index("Fund")
+        st.dataframe(df_rep, use_container_width=True,
+                     column_config={c: st.column_config.TextColumn(c) for c in df_rep.columns})
+
+        # Download
+        buf = io.BytesIO()
+        df_rep.to_csv(buf)
+        st.download_button(
+            "⬇ Export Portfolio Report (CSV)",
+            data=buf.getvalue(),
+            file_name=f"portfolio_weights_{datetime.today().strftime('%Y%m%d')}.csv",
+            mime="text/csv", key="dl_wt"
+        )
+
+        # Portfolio formula box
+        formula_str = " + ".join([
+            f"{w*100:.0f}%×{f['name'][:15]}" for f, w in zip(funds, w_pct)
+        ])
+        st.html(f"""
+        <div style="background:{CA};border:1px solid {MD};border-radius:8px;
+          padding:.8rem 1rem;margin-top:.7rem;user-select:none;">
+          <div style="color:{G};-webkit-text-fill-color:{G};font-weight:700;
+            font-size:.82rem;margin-bottom:.4rem;">Your Portfolio Formula</div>
+          <div style="font-family:monospace;color:{LB};-webkit-text-fill-color:{LB};
+            font-size:.78rem;line-height:1.6;word-break:break-word;">
+            P(t) = {formula_str}
+          </div>
+          <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.72rem;margin-top:.4rem;">
+            CAGR: {fp(cagr)} &nbsp;|&nbsp; σ: {fp(vol)} &nbsp;|&nbsp;
+            Sharpe: {shr:.2f} &nbsp;|&nbsp; Max DD: {fp(mxdd)} &nbsp;|&nbsp;
+            Diversification Benefit: {div_ben:.1f}%
+          </div>
+        </div>
+        """)
+
+
 # ─── MAIN ────────────────────────────────────────────────────────────────────
 def main():
     hero()
@@ -1285,10 +1681,10 @@ def main():
     snapshot_row(funds)
     st.html(f"""<div style="height:1px;background:linear-gradient(90deg,transparent,{C['gold']},transparent);margin:1rem 0;"></div>""")
 
-    t1,t2,t3,t4,t5,t6,t7,t8,t9=st.tabs([
+    t1,t2,t3,t4,t5,t6,t7,t8,t9,t10=st.tabs([
         "📈 Growth & Drawdown","📊 Annual & Rolling",
         "⚖️ Risk-Return","💳 SIP","💰 Lumpsum","🔗 Correlation","📋 Scorecard",
-        "📖 How to Use","🎓 Education"
+        "📖 How to Use","🎓 Education","⚖️ Portfolio Weights"
     ])
 
     with t1:
@@ -1377,6 +1773,9 @@ def main():
 
     with t9:
         education_tab()
+
+    with t10:
+        portfolio_weights_tab(funds)
 
     st.html(f"""
     <div style="background:linear-gradient(135deg,{C['blue']},{C['mid']});
