@@ -573,6 +573,487 @@ def welcome():
     </div>
     """)
 
+# ─── HOW TO USE TAB ──────────────────────────────────────────────────────────
+def how_to_use_tab():
+    st.html(f"""
+    <div style="background:linear-gradient(135deg,{C['blue']},{C['mid']});
+      border:2px solid {C['gold']};border-radius:14px;padding:1.4rem 2rem;
+      margin-bottom:1.4rem;user-select:none;">
+      <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+        font-size:1.4rem;font-weight:900;margin-bottom:.3rem;">📖 How to Use — MF Portfolio Evaluator</div>
+      <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-size:.9rem;">
+        A step-by-step guide to comparing mutual funds and interpreting results
+      </div>
+    </div>
+    """)
+
+    # ── STEP CARDS ──────────────────────────────────────────────────────────
+    steps = [
+        ("1","🗓️","Set Your Date Range",
+         "In the sidebar, choose a <b>Start Date</b> and <b>End Date</b>.",
+         ["Default range is Jan 2015 → Today (10 years of data)",
+          "Shorter range (e.g. 3Y) = recent performance focus",
+          "Longer range (e.g. 10Y) = includes full market cycles (2018 crash, 2020 COVID, 2021 bull run)",
+          "Tip: Use 7–10 years to get statistically meaningful CAGR & Sharpe"]),
+        ("2","💰","Enter Investment Amounts",
+         "Set the <b>Lumpsum amount</b> (one-time investment) and <b>Monthly SIP</b>.",
+         ["Lumpsum default: ₹1,00,000 — see how it grows in the Lumpsum tab",
+          "SIP default: ₹10,000/month — see corpus growth in the SIP tab",
+          "These are used only for illustration — not actual transactions",
+          "Tip: Try ₹5,000 SIP across 5 different category funds to see diversification in action"]),
+        ("3","🎯","Select Up to 5 Funds",
+         "Each fund slot has two dropdowns: <b>Category</b> → <b>Fund Name</b>.",
+         ["Step 1: Pick a category (e.g. Large Cap, ELSS, Gold, Index Fund)",
+          "Step 2: Pick a specific fund from that category",
+          "You can mix categories — e.g. Large Cap + Mid Cap + ELSS + Gold + International",
+          "Leave slots as '— Skip —' if you want fewer than 5 funds",
+          "Tip: Compare a fund against its benchmark index fund to test active vs passive"]),
+        ("4","▶️","Click Analyse Portfolio",
+         "Press the gold <b>▶ ANALYSE PORTFOLIO</b> button. The app fetches live NAV data from AMFI.",
+         ["Data is fetched from api.mfapi.in (free AMFI public API — no login needed)",
+          "NAV data may take 5–15 seconds depending on your internet speed",
+          "Data is cached for 30 minutes — click 🔄 Refresh Scheme List to force a reload",
+          "Ensure you are connected to the internet for live data"]),
+        ("5","📊","Explore the 7 Analysis Tabs",
+         "Navigate across tabs to view different aspects of fund performance.",
+         ["📈 Growth & Drawdown — Start here. See who grew most & who fell hardest",
+          "📊 Annual & Rolling — See consistency year-by-year and rolling CAGR windows",
+          "⚖️ Risk-Return — Best single view: high CAGR with low volatility = top-right quadrant",
+          "💳 SIP — Compare the power of systematic investing across funds",
+          "💰 Lumpsum — Compare one-time investment outcomes",
+          "🔗 Correlation — Check if your funds actually diversify each other",
+          "📋 Scorecard — Full table: 1Y/3Y/5Y/7Y/10Y CAGR + all risk metrics + CSV export"]),
+        ("6","📥","Export Your Results",
+         "In the <b>Scorecard tab</b>, click <b>⬇ Export Scorecard (CSV)</b>.",
+         ["The CSV includes all CAGR periods, Sharpe, Volatility, Max Drawdown, Best/Worst Year",
+          "Use it in Excel for further analysis or to share with students",
+          "File is named mf_scorecard_YYYYMMDD.csv automatically"]),
+    ]
+
+    for i in range(0, len(steps), 2):
+        cols = st.columns(2)
+        for j, col in enumerate(cols):
+            if i+j >= len(steps): break
+            num,icon,title,desc,bullets = steps[i+j]
+            bhtml = "".join([f"""<div style="display:flex;gap:8px;margin-bottom:5px;">
+              <span style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};font-size:.8rem;margin-top:1px;">▸</span>
+              <span style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.78rem;">{b}</span>
+            </div>""" for b in bullets])
+            with col:
+                st.html(f"""
+                <div style="background:{C['card']};border:1px solid {C['mid']};
+                  border-radius:12px;padding:1.1rem 1.2rem;margin-bottom:.8rem;
+                  border-left:4px solid {C['gold']};user-select:none;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:.6rem;">
+                    <div style="background:linear-gradient(135deg,{C['blue']},{C['mid']});
+                      color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+                      border:1px solid {C['gold']};border-radius:50%;
+                      width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+                      font-weight:900;font-size:.95rem;flex-shrink:0;">
+                      {num}
+                    </div>
+                    <div>
+                      <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+                        font-weight:800;font-size:.95rem;">{icon} {title}</div>
+                    </div>
+                  </div>
+                  <div style="color:{C['txt']};-webkit-text-fill-color:{C['txt']};
+                    font-size:.82rem;margin-bottom:.6rem;">{desc}</div>
+                  {bhtml}
+                </div>
+                """)
+
+    # ── QUICK TIPS ────────────────────────────────────────────────────────────
+    st.html(f"""
+    <div style="background:{C['card']};border:1px solid {C['gold']};
+      border-radius:12px;padding:1.1rem 1.4rem;margin-top:.4rem;user-select:none;">
+      <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+        font-weight:900;font-size:1rem;margin-bottom:.8rem;">
+        ⚡ Quick Reference — What to Look For
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+        <div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.8rem;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            🏆 Consistent Outperformer
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            High CAGR across 3Y, 5Y, 7Y windows<br>
+            Sharpe &gt; 1.0<br>
+            Max Drawdown &lt; -35%<br>
+            Positive rolling returns most of the time
+          </div>
+        </div>
+        <div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.8rem;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            ⚠️ High Return but Risky
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            High CAGR but Volatility &gt; 25%<br>
+            Sharpe between 0.5–1.0<br>
+            Max Drawdown worse than -50%<br>
+            Fits aggressive investors only
+          </div>
+        </div>
+        <div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.8rem;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            🛡️ Defensive / Stable
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            Moderate CAGR (10–14%)<br>
+            Low Volatility (&lt; 15%)<br>
+            Sharpe &gt; 1.2 despite moderate returns<br>
+            Suits conservative / hybrid investors
+          </div>
+        </div>
+        <div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.8rem;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            🔗 Good Diversification Pair
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            Correlation &lt; 0.3 between two funds<br>
+            e.g. Equity + Gold, Equity + Debt<br>
+            Reduces portfolio volatility meaningfully<br>
+            Check Correlation tab heatmap
+          </div>
+        </div>
+        <div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.8rem;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            📉 Recovery Speed Check
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            In Drawdown chart, see how fast a fund recovers after a crash<br>
+            Fast V-shaped recovery = strong fund manager<br>
+            Prolonged trough = structural issue
+          </div>
+        </div>
+        <div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.8rem;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            💳 SIP Power Check
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            A fund that looks bad on lumpsum may shine on SIP<br>
+            Volatile funds benefit more from rupee-cost averaging<br>
+            Compare SIP corpus vs amount invested line
+          </div>
+        </div>
+      </div>
+    </div>
+    """)
+
+    # ── SUGGESTED FUND COMBINATIONS ──────────────────────────────────────────
+    st.html(f"""
+    <div style="background:{C['card']};border:1px solid {C['mid']};
+      border-radius:12px;padding:1.1rem 1.4rem;margin-top:.8rem;user-select:none;">
+      <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+        font-weight:900;font-size:1rem;margin-bottom:.8rem;">
+        🧪 Suggested Comparison Sets for Classroom Use
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+        <div style="background:rgba(0,77,128,.3);border:1px solid {C['mid']};border-radius:8px;padding:.85rem;">
+          <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            Set A — Active vs Passive (Large Cap)
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            Fund 1: SBI Bluechip Fund (Large Cap)<br>
+            Fund 2: Mirae Asset Large Cap (Large Cap)<br>
+            Fund 3: UTI Nifty 50 Index Fund (Index Fund)<br>
+            Fund 4: HDFC Index Fund Nifty 50 (Index Fund)<br>
+            <i>Goal: Does active management beat the index?</i>
+          </div>
+        </div>
+        <div style="background:rgba(0,77,128,.3);border:1px solid {C['mid']};border-radius:8px;padding:.85rem;">
+          <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            Set B — Risk Spectrum Portfolio
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            Fund 1: Nippon India Small Cap (Small Cap)<br>
+            Fund 2: Axis Midcap Fund (Mid Cap)<br>
+            Fund 3: SBI Bluechip Fund (Large Cap)<br>
+            Fund 4: ICICI Pru Equity & Debt (Hybrid)<br>
+            Fund 5: HDFC Liquid Fund (Debt)<br>
+            <i>Goal: Visualise risk-return spectrum</i>
+          </div>
+        </div>
+        <div style="background:rgba(0,77,128,.3);border:1px solid {C['mid']};border-radius:8px;padding:.85rem;">
+          <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            Set C — Diversification Study
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            Fund 1: Parag Parikh Flexi Cap (Flexi)<br>
+            Fund 2: SBI Gold Fund (Gold)<br>
+            Fund 3: Motilal Oswal Nasdaq 100 (International)<br>
+            Fund 4: ICICI Pru Gilt Fund (Debt)<br>
+            <i>Goal: Low correlation across asset classes</i>
+          </div>
+        </div>
+        <div style="background:rgba(0,77,128,.3);border:1px solid {C['mid']};border-radius:8px;padding:.85rem;">
+          <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};font-weight:700;font-size:.82rem;margin-bottom:5px;">
+            Set D — ELSS Tax Planning Comparison
+          </div>
+          <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;">
+            Fund 1: Axis Long Term Equity (ELSS)<br>
+            Fund 2: Mirae Asset ELSS (ELSS)<br>
+            Fund 3: SBI Long Term Equity (ELSS)<br>
+            Fund 4: ICICI Pru Long Term Equity (ELSS)<br>
+            <i>Goal: Best ELSS fund for 80C tax saving</i>
+          </div>
+        </div>
+      </div>
+    </div>
+    """)
+
+
+# ─── EDUCATION TAB ───────────────────────────────────────────────────────────
+def education_tab():
+    st.html(f"""
+    <div style="background:linear-gradient(135deg,{C['blue']},{C['mid']});
+      border:2px solid {C['gold']};border-radius:14px;padding:1.4rem 2rem;
+      margin-bottom:1.4rem;user-select:none;">
+      <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+        font-size:1.4rem;font-weight:900;margin-bottom:.3rem;">🎓 Finance Education Centre</div>
+      <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-size:.9rem;">
+        Concepts, formulas, and interpretation frameworks for MBA · CFA · FRM students
+      </div>
+    </div>
+    """)
+
+    # ── SECTION 1: KEY METRICS ────────────────────────────────────────────────
+    st.html(f"""
+    <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+      font-size:1.05rem;font-weight:900;margin-bottom:.6rem;user-select:none;">
+      📐 Core Performance Metrics — What They Mean & How They're Calculated
+    </div>
+    """)
+
+    metrics = [
+        ("CAGR — Compound Annual Growth Rate",
+         f"CAGR = (Ending NAV / Beginning NAV)^(1 / N) - 1",
+         "The annualised return that would take the investment from its starting NAV to the ending NAV over N years, assuming reinvestment. It smooths out year-to-year volatility.",
+         ["N = number of years in the period",
+          "A fund with CAGR of 14% doubles in ~5.1 years (Rule of 72: 72/14 = 5.1)",
+          "CAGR ignores intermediate volatility — two funds can have same CAGR with very different risk profiles",
+          "Always compare CAGR with Volatility and Sharpe Ratio together"]),
+        ("Volatility — Annualised Standard Deviation",
+         f"σ_annual = σ_daily × √252",
+         "Measures how much a fund's daily returns deviate from its mean. Higher volatility means larger swings in NAV — both up and down. Annualised by multiplying daily SD by √252 (trading days in a year).",
+         ["Equity funds: typically 15–25% · Debt funds: 1–5% · Gold: 12–18%",
+          "Volatility alone is not bad — a fund can have high volatility but still be rewarding if CAGR compensates",
+          "Volatility is symmetric — it captures both upside and downside variability",
+          "Used as the denominator in Sharpe Ratio"]),
+        ("Sharpe Ratio",
+         f"Sharpe = (CAGR - Risk-Free Rate) / σ_annual",
+         "Measures excess return per unit of total risk. A Sharpe of 1.0 means the fund earned exactly 1% excess return for every 1% of volatility. Risk-free rate assumed: 6.5% (91-day T-bill).",
+         ["< 0: Fund destroyed value vs risk-free",
+          "0–1: Marginal — low excess return for risk taken",
+          "> 1: Good — adequate compensation for risk",
+          "> 2: Excellent — rare for pure equity funds over full cycles",
+          "Limitation: assumes normal distribution of returns; understates tail risk"]),
+        ("Maximum Drawdown",
+         f"Max DD = min[(NAV_t - Peak NAV_t) / Peak NAV_t]",
+         "The largest peak-to-trough decline in NAV during the period. It answers: 'What is the worst loss a patient investor would have experienced?' Critical for understanding investor psychology and risk.",
+         ["Nifty 50 fell ~38% in COVID crash (Jan–Mar 2020)",
+          "Small cap funds often see -50% to -60% drawdowns in bear markets",
+          "Recovery time matters: a -40% drawdown needs a +67% gain to recover",
+          "Good funds have smaller drawdowns AND faster V-shaped recovery"]),
+        ("Rolling Returns",
+         f"Rolling CAGR(t, W) = (NAV_t / NAV_{t-W})^(1/Y) - 1",
+         "CAGR calculated over a rolling window of W trading days (e.g. 756 days = 3Y), computed at every point in time. Unlike point-to-point CAGR, rolling returns show consistency across different entry points.",
+         ["If 3Y rolling returns are always positive → the fund never lost money over any 3-year holding period",
+          "Wide dispersion in rolling returns = performance highly dependent on entry timing",
+          "Narrow, consistently positive rolling returns = low sequence-of-returns risk",
+          "Best used to answer: 'Would I have made money if I invested 3 years ago at any point?'"]),
+        ("SIP Return (XIRR proxy)",
+         f"SIP corpus = Σ (SIP_amount / NAV_t) × NAV_final",
+         "Each monthly SIP buys units at that month's NAV. Total units accumulate. Final corpus = total units × last NAV. Return is expressed as (Corpus - Invested) / Invested. A true SIP return would use XIRR.",
+         ["SIP benefits most from volatile funds via Rupee Cost Averaging (RCA)",
+          "In falling markets, SIP buys more units at lower prices → lower average cost",
+          "Volatile small/mid cap funds often have better SIP returns than lumpsum returns",
+          "SIP return ≠ CAGR — it depends on the entire time path of NAVs, not just start and end"]),
+    ]
+
+    for title, formula, explanation, bullets in metrics:
+        bhtml = "".join([f"""<div style="display:flex;gap:8px;margin-bottom:4px;">
+          <span style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};font-size:.75rem;margin-top:1px;">▸</span>
+          <span style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.76rem;">{b}</span>
+        </div>""" for b in bullets])
+        st.html(f"""
+        <div style="background:{C['card']};border:1px solid {C['mid']};
+          border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;user-select:none;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};
+            font-weight:800;font-size:.9rem;margin-bottom:.4rem;">{title}</div>
+          <div style="background:rgba(0,51,102,.6);border:1px solid {C['mid']};
+            border-radius:6px;padding:.45rem .8rem;margin-bottom:.5rem;
+            font-family:monospace;color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+            font-size:.82rem;">{formula}</div>
+          <div style="color:{C['txt']};-webkit-text-fill-color:{C['txt']};
+            font-size:.8rem;margin-bottom:.5rem;line-height:1.5;">{explanation}</div>
+          {bhtml}
+        </div>
+        """)
+
+    # ── SECTION 2: RISK FRAMEWORKS ────────────────────────────────────────────
+    st.html(f"""
+    <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+      font-size:1.05rem;font-weight:900;margin:1rem 0 .6rem;user-select:none;">
+      🏗️ Risk Classification Frameworks for Indian Mutual Funds
+    </div>
+    """)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.html(f"""
+        <div style="background:{C['card']};border:1px solid {C['mid']};
+          border-radius:12px;padding:1rem 1.2rem;user-select:none;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};
+            font-weight:800;font-size:.9rem;margin-bottom:.7rem;">
+            SEBI Risk-O-Meter (Riskometer)
+          </div>
+          {"".join([f'''<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">
+            <div style="width:12px;height:12px;border-radius:2px;background:{col};flex-shrink:0;"></div>
+            <div>
+              <span style="color:{C['txt']};-webkit-text-fill-color:{C['txt']};font-weight:700;font-size:.78rem;">{label}</span>
+              <span style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.73rem;"> — {desc}</span>
+            </div>
+          </div>''' for label,desc,col in [
+              ("Low Risk","Liquid, Overnight, Money Market funds","#28a745"),
+              ("Low to Moderate","Ultra Short, Low Duration Debt","#8bc34a"),
+              ("Moderate","Short/Medium Duration Debt, Balanced Advantage","#FFC107"),
+              ("Moderately High","Large Cap Equity, Flexi Cap, Hybrid","#FF9800"),
+              ("High","Mid Cap, Multi Cap, ELSS, Sectoral","#ff6b6b"),
+              ("Very High","Small Cap, Thematic, International, Sector ETF","#dc3545"),
+          ]])}
+        </div>
+        """)
+    with c2:
+        st.html(f"""
+        <div style="background:{C['card']};border:1px solid {C['mid']};
+          border-radius:12px;padding:1rem 1.2rem;user-select:none;">
+          <div style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};
+            font-weight:800;font-size:.9rem;margin-bottom:.7rem;">
+            Volatility Benchmarks — Indian Markets
+          </div>
+          {"".join([f'''<div style="background:rgba(0,51,102,.4);border-radius:6px;
+            padding:.45rem .8rem;margin-bottom:6px;">
+            <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+              font-weight:700;font-size:.78rem;">{cat}</div>
+            <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};
+              font-size:.73rem;">{detail}</div>
+          </div>''' for cat,detail in [
+              ("Overnight / Liquid Fund","Volatility: 0.1–1.0% · Max DD: near zero"),
+              ("Gilt / Long Duration Debt","Volatility: 4–8% · Sensitive to RBI rate changes"),
+              ("Large Cap Equity","Volatility: 14–20% · Max DD: -30 to -45%"),
+              ("Flexi / Multi Cap","Volatility: 16–22% · Max DD: -35 to -50%"),
+              ("Mid Cap Equity","Volatility: 20–28% · Max DD: -45 to -55%"),
+              ("Small Cap Equity","Volatility: 25–35% · Max DD: -55 to -65%"),
+              ("Gold Fund","Volatility: 12–18% · Low correlation with equity"),
+              ("International / Nasdaq","Volatility: 18–25% · Currency risk adds ~3–5%"),
+          ]])}
+        </div>
+        """)
+
+    # ── SECTION 3: PORTFOLIO THEORY ──────────────────────────────────────────
+    st.html(f"""
+    <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+      font-size:1.05rem;font-weight:900;margin:1rem 0 .6rem;user-select:none;">
+      📚 Modern Portfolio Theory — Key Concepts
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:.8rem;user-select:none;">
+    """)
+    mpt_cards = [
+        ("Diversification","Holding multiple low-correlation assets reduces portfolio volatility without proportionately reducing expected returns. When Corr(A,B) &lt; 1, the portfolio σ &lt; weighted average σ of individual assets.",
+         f"σ_p = √(w₁²σ₁² + w₂²σ₂² + 2w₁w₂σ₁σ₂ρ₁₂)"),
+        ("Efficient Frontier","The set of portfolios that offer maximum expected return for a given level of risk (or minimum risk for a given return). Portfolios below the frontier are suboptimal.",
+         "Use Risk-Return tab to identify which fund sits closest to the efficient frontier"),
+        ("Correlation & β","Correlation (-1 to +1) measures co-movement. Beta measures a fund's sensitivity to its benchmark. β &gt; 1 = amplifies market moves (aggressive); β &lt; 1 = dampens moves (defensive).",
+         "Gold typically has ρ ≈ 0.0 to -0.2 vs equity — ideal diversifier"),
+        ("Rupee Cost Averaging","SIP removes the need to time the market. By investing fixed amounts monthly, you buy more units when NAV is low and fewer when high — lowering average cost over time.",
+         "RCA benefit is highest for volatile funds with long-term upward trend"),
+        ("Time Value & Compounding","₹10,000/month at 14% CAGR for 20 years = ₹1.33 Crore vs ₹24L invested. The last 5 years contribute more than the first 15 — start early, stay invested.",
+         "Rule of 72: Years to double = 72 / CAGR%. At 14%, money doubles every 5.1 years"),
+        ("Sequence of Returns Risk","The order in which returns occur matters for SIP/SWP investors. Poor returns early in a withdrawal phase (SWP) can permanently deplete capital even if average return is positive.",
+         "Drawdown chart reveals the worst sequences — key for retirement planning"),
+    ]
+    for ttl,desc,formula in mpt_cards:
+        st.html(f"""
+        <div style="background:{C['card']};border:1px solid {C['mid']};
+          border-radius:10px;padding:.85rem 1rem;user-select:none;">
+          <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+            font-weight:800;font-size:.82rem;margin-bottom:.4rem;">{ttl}</div>
+          <div style="color:{C['txt']};-webkit-text-fill-color:{C['txt']};
+            font-size:.74rem;line-height:1.5;margin-bottom:.4rem;">{desc}</div>
+          <div style="background:rgba(0,51,102,.5);border-radius:4px;
+            padding:.3rem .6rem;font-size:.7rem;font-family:monospace;
+            color:{C['lb']};-webkit-text-fill-color:{C['lb']};">{formula}</div>
+        </div>
+        """)
+    st.html("</div>")
+
+    # ── SECTION 4: SEBI CATEGORY GUIDE ───────────────────────────────────────
+    st.html(f"""
+    <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
+      font-size:1.05rem;font-weight:900;margin:1rem 0 .6rem;user-select:none;">
+      🏦 SEBI Fund Category Guide — Which Fund for Which Goal?
+    </div>
+    """)
+    cats_guide = [
+        ("Large Cap Fund","Min 80% in top 100 companies by market cap. Stable, lower volatility, benchmark-hugging. Good for conservative equity allocation.","3–5 years","Conservative to Moderate","Nifty 50 / Nifty 100"),
+        ("Mid Cap Fund","Min 65% in 101st–250th companies. Higher growth potential, higher risk. Needs longer horizon for cycle smoothing.","5–7 years","Moderate to High","Nifty Midcap 150"),
+        ("Small Cap Fund","Min 65% beyond 250th company. Highest potential returns, highest volatility. Severe drawdowns in bear markets.","7–10 years","High to Very High","Nifty Smallcap 250"),
+        ("ELSS (Tax Saver)","Min 80% in equities. 3-year mandatory lock-in. Eligible for ₹1.5L deduction under Sec 80C. Often large/multi cap.","3+ years (locked)","High","Nifty 500 / BSE 500"),
+        ("Flexi Cap Fund","Min 65% in equities — can allocate freely across large/mid/small cap. Fund manager has full flexibility.","5–7 years","Moderately High","Nifty 500"),
+        ("Index Fund / ETF","Passively tracks an index (Nifty 50, Sensex, etc.). Lower expense ratio (~0.1–0.2%). Returns mirror index minus tracking error.","Any (3Y+)","Moderate to High","Same as tracked index"),
+        ("Hybrid / Balanced","Mix of equity (40–80%) and debt (20–60%). Balanced Advantage Funds (BAFs) dynamically adjust allocation.","3–5 years","Moderate","Nifty 50 Hybrid Index"),
+        ("Gilt Fund","Invests only in Government Securities (G-Secs). No credit risk, but high duration/interest rate risk.","3–5 years","Moderate","CRISIL Gilt Index"),
+        ("Liquid Fund","Very short duration debt (&lt;91 days). Near-zero risk. Used as parking for emergency corpus or short-term cash.","&lt;3 months","Low","CRISIL Liquid Index"),
+        ("Gold Fund","Invests in Gold ETFs, which track physical gold prices. Inflation hedge, low equity correlation.","5+ years","Moderately High","Domestic Gold Price"),
+    ]
+    rows_html = "".join([f"""
+    <tr>
+      <td style="color:{C['lb']};-webkit-text-fill-color:{C['lb']};font-weight:700;font-size:.76rem;padding:.5rem .7rem;border-bottom:1px solid {C['mid']};">{cat}</td>
+      <td style="color:{C['txt']};-webkit-text-fill-color:{C['txt']};font-size:.73rem;padding:.5rem .7rem;border-bottom:1px solid {C['mid']};line-height:1.4;">{desc}</td>
+      <td style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};font-size:.73rem;padding:.5rem .7rem;border-bottom:1px solid {C['mid']};white-space:nowrap;">{horizon}</td>
+      <td style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.73rem;padding:.5rem .7rem;border-bottom:1px solid {C['mid']};">{risk}</td>
+      <td style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.73rem;padding:.5rem .7rem;border-bottom:1px solid {C['mid']};">{benchmark}</td>
+    </tr>""" for cat,desc,horizon,risk,benchmark in cats_guide])
+    st.html(f"""
+    <div style="background:{C['card']};border:1px solid {C['mid']};
+      border-radius:12px;overflow:hidden;margin-bottom:.8rem;user-select:none;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:linear-gradient(135deg,{C['blue']},{C['mid']});">
+            <th style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};padding:.6rem .7rem;text-align:left;font-size:.78rem;">Category</th>
+            <th style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};padding:.6rem .7rem;text-align:left;font-size:.78rem;">Description</th>
+            <th style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};padding:.6rem .7rem;text-align:left;font-size:.78rem;">Ideal Horizon</th>
+            <th style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};padding:.6rem .7rem;text-align:left;font-size:.78rem;">Risk Level</th>
+            <th style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};padding:.6rem .7rem;text-align:left;font-size:.78rem;">Benchmark</th>
+          </tr>
+        </thead>
+        <tbody>{rows_html}</tbody>
+      </table>
+    </div>
+    """)
+
+    # ── DISCLAIMER ────────────────────────────────────────────────────────────
+    st.html(f"""
+    <div style="background:rgba(220,53,69,.1);border:1px solid rgba(220,53,69,.4);
+      border-radius:10px;padding:.8rem 1.1rem;user-select:none;">
+      <div style="color:#ff6b6b;-webkit-text-fill-color:#ff6b6b;
+        font-weight:800;font-size:.85rem;margin-bottom:.35rem;">
+        ⚠️ Important Disclaimer
+      </div>
+      <div style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.75rem;line-height:1.6;">
+        This tool is built for <strong style="color:{C['txt']};-webkit-text-fill-color:{C['txt']};">educational purposes only</strong>
+        as part of the Mountain Path — World of Finance curriculum.
+        Past performance does not guarantee future returns.
+        Mutual fund investments are subject to market risk.
+        Please read all scheme-related documents carefully before investing.
+        This is not SEBI-registered investment advice.
+        All metrics are computed from historical NAV data sourced from AMFI India.
+      </div>
+    </div>
+    """)
+
+
 # ─── MAIN ────────────────────────────────────────────────────────────────────
 def main():
     hero()
@@ -626,9 +1107,10 @@ def main():
     snapshot_row(funds)
     st.html(f"""<div style="height:1px;background:linear-gradient(90deg,transparent,{C['gold']},transparent);margin:1rem 0;"></div>""")
 
-    t1,t2,t3,t4,t5,t6,t7=st.tabs([
+    t1,t2,t3,t4,t5,t6,t7,t8,t9=st.tabs([
         "📈 Growth & Drawdown","📊 Annual & Rolling",
-        "⚖️ Risk-Return","💳 SIP","💰 Lumpsum","🔗 Correlation","📋 Scorecard"
+        "⚖️ Risk-Return","💳 SIP","💰 Lumpsum","🔗 Correlation","📋 Scorecard",
+        "📖 How to Use","🎓 Education"
     ])
 
     with t1:
@@ -710,6 +1192,13 @@ def main():
         st.download_button("⬇ Export Scorecard (CSV)",data=buf.getvalue(),
             file_name=f"mf_scorecard_{datetime.today().strftime('%Y%m%d')}.csv",
             mime="text/csv",key="dl")
+
+
+    with t8:
+        how_to_use_tab()
+
+    with t9:
+        education_tab()
 
     st.html(f"""
     <div style="background:linear-gradient(135deg,{C['blue']},{C['mid']});
