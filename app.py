@@ -1670,20 +1670,47 @@ def main():
     </div>
     """)
 
-    if not run: welcome(); return
-    if not sels: st.warning("⚠️ Select at least one fund."); return
+    # ── SESSION STATE: persist funds across widget interactions ──────────────
+    # Build a cache key from current selection so changing funds invalidates cache
+    sel_key = str([(s["code"], start, end, lump, sip) for s in sels]) if sels else ""
 
-    funds=[]
-    prog=st.progress(0,"Fetching NAV data from AMFI…")
-    for i,s in enumerate(sels):
-        prog.progress((i+1)/len(sels),f"Loading {s['name'][:45]}…")
-        nav,_=load_nav(s["code"],start,end)
-        if nav is not None and len(nav)>=20:
-            m=compute(nav,lump,sip)
-            if m: funds.append({"name":s["name"],"c":s["c"],"m":m,"code":s["code"]})
-    prog.empty()
+    if run and sels:
+        # User clicked Analyse — fetch fresh data
+        funds = []
+        prog = st.progress(0, "Fetching NAV data from AMFI…")
+        for i, s in enumerate(sels):
+            prog.progress((i+1)/len(sels), f"Loading {s['name'][:45]}…")
+            nav, _ = load_nav(s["code"], start, end)
+            if nav is not None and len(nav) >= 20:
+                m = compute(nav, lump, sip)
+                if m: funds.append({"name": s["name"], "c": s["c"], "m": m, "code": s["code"]})
+        prog.empty()
+        if not funds:
+            st.error("❌ No NAV data. Try different funds or wider date range.")
+            st.session_state.pop("funds", None)
+            st.session_state.pop("funds_key", None)
+            return
+        # Store in session state
+        st.session_state["funds"]     = funds
+        st.session_state["funds_key"] = sel_key
 
-    if not funds: st.error("❌ No NAV data. Try different funds or wider date range."); return
+    elif "funds" in st.session_state and st.session_state.get("funds_key") == sel_key:
+        # Widget interaction re-run — restore funds from session state
+        funds = st.session_state["funds"]
+
+    elif "funds" in st.session_state and sels:
+        # Selection changed but user hasn't re-run — show stale data with a notice
+        funds = st.session_state["funds"]
+        st.info("💡 Fund selection or parameters changed. Click **▶ ANALYSE PORTFOLIO** to refresh.")
+
+    else:
+        # No data at all — show welcome
+        welcome()
+        return
+
+    if not funds:
+        welcome()
+        return
 
     slabel("📊","Fund Performance Snapshot",
            f"Period: {start} → {end}  ·  Lumpsum: {fi(lump)}  ·  SIP: {fi(sip)}/month")
