@@ -803,6 +803,92 @@ def how_to_use_tab():
     """)
 
 
+    # ── HOW THE APP CALCULATES VALUES ─────────────────────────────────────
+    _ht_html1 = """<div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Lumpsum Growth</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">Value(t) = L × NAV(t) / NAV(t0)</div><div style="color:#8892b0;font-size:.72rem;">L = lumpsum entered. Value scales directly with NAV from start date.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">SIP Corpus</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">Units(m) = SIP / NAV(m)
+Corpus = Σ Units(m) × NAV(latest)</div><div style="color:#8892b0;font-size:.72rem;">Each month buys units at that month's NAV. More units at lower prices = Rupee Cost Averaging.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Period CAGR</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">CAGR = (NAV_end / NAV_start)^(1/N) - 1</div><div style="color:#8892b0;font-size:.72rem;">N = years. Annualised growth rate smoothing out interim volatility.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Daily Return</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">r(t) = NAV(t) / NAV(t-1) - 1</div><div style="color:#8892b0;font-size:.72rem;">Foundation for Volatility, Sharpe Ratio, Correlation, and Drawdown calculations.</div></div>"""
+    _ht_html2 = """<div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Value</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">P(t) = Capital × Σᵢ[ wᵢ × NAVᵢ(t) / NAVᵢ(t0) ]</div><div style="color:#8892b0;font-size:.72rem;">wᵢ = weight of fund i (e.g. 0.40). Weighted blend of each fund's indexed growth.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Return</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">R_p = Σᵢ wᵢ × Rᵢ</div><div style="color:#8892b0;font-size:.72rem;">Weighted average return. Linear — no diversification benefit appears here.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Volatility</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">σ_p = √[ Σᵢ Σⱼ wᵢ wⱼ σᵢ σⱼ ρᵢⱼ ]</div><div style="color:#8892b0;font-size:.72rem;">Non-linear. When ρᵢⱼ < 1, σ_p < weighted avg σ. This IS the diversification benefit.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Sharpe</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">Sharpe_p = (R_p - Rf) / σ_p</div><div style="color:#8892b0;font-size:.72rem;">Rf = 6.5% risk-free. A diversified portfolio usually achieves higher Sharpe than individual funds.</div></div>"""
+    st.html(f"""
+    <div style="background:#112240;border:1px solid #FFD700;border-radius:12px;
+      padding:1.1rem 1.4rem;margin-top:.8rem;user-select:none;">
+      <div style="color:#FFD700;-webkit-text-fill-color:#FFD700;font-weight:900;
+        font-size:1rem;margin-bottom:.8rem;">
+        🔢 How the App Calculates Values — Under the Hood
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+        <div style="background:rgba(0,51,102,.35);border-radius:8px;padding:.9rem;">
+          <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;font-weight:700;
+            font-size:.83rem;margin-bottom:.5rem;">
+            This App — Each Fund Evaluated Independently
+          </div>
+          <div style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.74rem;
+            margin-bottom:.5rem;line-height:1.5;">
+            All 5 funds receive the same lumpsum and SIP. No cross-fund weight allocation yet.
+          </div>
+          {_ht_html1}
+        </div>
+
+        <div style="background:rgba(0,51,102,.35);border-radius:8px;padding:.9rem;">
+          <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;font-weight:700;
+            font-size:.83rem;margin-bottom:.5rem;">
+            True Weighted Portfolio — The Full Framework
+          </div>
+          <div style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.74rem;
+            margin-bottom:.5rem;line-height:1.5;">
+            With weights w₁+w₂+…+w₅ = 1, the blended portfolio:
+          </div>
+          {_ht_html2}
+        </div>
+
+        <div style="background:rgba(0,51,102,.35);border-radius:8px;padding:.9rem;">
+          <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;font-weight:700;
+            font-size:.83rem;margin-bottom:.5rem;">Why Correlation Drives σ_p</div>
+          <div style="background:rgba(0,0,0,.3);border-radius:5px;padding:.4rem .7rem;
+            font-family:monospace;color:#FFD700;-webkit-text-fill-color:#FFD700;
+            font-size:.76rem;margin-bottom:.4rem;white-space:pre;">ρ = +1.0  →  σ_p = weighted avg σ   (zero benefit)
+ρ =  0.0  →  σ_p = √(w₁²σ₁² + w₂²σ₂²)
+ρ = −1.0  →  σ_p → 0               (perfect hedge)</div>
+          <div style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.74rem;line-height:1.5;">
+            Two Large Cap funds: ρ ≈ 0.90 — almost no risk reduction.<br>
+            Large Cap + Gold: ρ ≈ −0.15 — meaningful 30-35% risk reduction.<br>
+            Always check the Correlation heatmap before finalising your fund mix.
+          </div>
+        </div>
+
+        <div style="background:rgba(0,51,102,.35);border-radius:8px;padding:.9rem;">
+          <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;font-weight:700;
+            font-size:.83rem;margin-bottom:.5rem;">Reading the Correlation Tab</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:.3rem;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:13px;height:13px;border-radius:3px;
+                background:#dc3545;flex-shrink:0;"></div>
+              <span style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.74rem;">
+                ρ &gt; 0.7 — High overlap. Barely reduces portfolio risk.
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:13px;height:13px;border-radius:3px;
+                background:#FFC107;flex-shrink:0;"></div>
+              <span style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.74rem;">
+                ρ 0.3–0.7 — Moderate diversification. Partial risk reduction.
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:13px;height:13px;border-radius:3px;
+                background:#00bfff;flex-shrink:0;"></div>
+              <span style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.74rem;">
+                ρ &lt; 0.3 — Excellent diversification. Significant σ_p reduction.
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    """)
+
+
+
 # ─── EDUCATION TAB ───────────────────────────────────────────────────────────
 def education_tab():
     st.html(f"""
@@ -891,7 +977,99 @@ def education_tab():
         </div>
         """)
 
+    # ── SECTION: PORTFOLIO VALUE & WEIGHTS ──────────────────────────────────
+    _edu_html1 = """<div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Lumpsum Growth</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">Value(t) = L × NAV(t) / NAV(t0)</div><div style="color:#8892b0;font-size:.72rem;">L = lumpsum entered. Value scales directly with NAV from start date.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">SIP Corpus</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">Units(m) = SIP / NAV(m)
+Corpus = Σ Units(m) × NAV(latest)</div><div style="color:#8892b0;font-size:.72rem;">Each month buys units at that month's NAV. More units at lower prices = Rupee Cost Averaging.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Period CAGR</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">CAGR = (NAV_end / NAV_start)^(1/N) - 1</div><div style="color:#8892b0;font-size:.72rem;">N = years. Annualised growth rate smoothing out interim volatility.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Daily Return</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">r(t) = NAV(t) / NAV(t-1) - 1</div><div style="color:#8892b0;font-size:.72rem;">Foundation for Volatility, Sharpe Ratio, Correlation, and Drawdown calculations.</div></div>"""
+    _edu_html2 = """<div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Value</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">P(t) = Capital × Σᵢ[ wᵢ × NAVᵢ(t) / NAVᵢ(t0) ]</div><div style="color:#8892b0;font-size:.72rem;">wᵢ = weight of fund i (e.g. 0.40). Weighted blend of each fund's indexed growth.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Return</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">R_p = Σᵢ wᵢ × Rᵢ</div><div style="color:#8892b0;font-size:.72rem;">Weighted average return. Linear — no diversification benefit appears here.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Volatility</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">σ_p = √[ Σᵢ Σⱼ wᵢ wⱼ σᵢ σⱼ ρᵢⱼ ]</div><div style="color:#8892b0;font-size:.72rem;">Non-linear. When ρᵢⱼ < 1, σ_p < weighted avg σ. This IS the diversification benefit.</div></div><div style="background:rgba(0,51,102,.5);border-radius:6px;padding:.5rem .8rem;margin-bottom:6px;"><div style="color:#FFD700;font-weight:700;font-size:.78rem;margin-bottom:3px;">Portfolio Sharpe</div><div style="font-family:monospace;color:#ADD8E6;font-size:.75rem;margin-bottom:3px;white-space:pre-line;">Sharpe_p = (R_p - Rf) / σ_p</div><div style="color:#8892b0;font-size:.72rem;">Rf = 6.5% risk-free. A diversified portfolio usually achieves higher Sharpe than individual funds.</div></div>"""
+    _edu_corr  = """<tr style="border-bottom:1px solid #004d80;"><td style="color:#dc3545;padding:.45rem .8rem;font-weight:700;">+1.0</td><td style="color:#e6f1ff;padding:.45rem .8rem;">Two similar Large Cap funds</td><td style="color:#ADD8E6;padding:.45rem .8rem;font-family:monospace;font-weight:700;">16.5%</td><td style="color:#8892b0;padding:.45rem .8rem;">= Wtd Avg</td><td style="color:#8892b0;padding:.45rem .8rem;font-weight:700;">No benefit</td></tr><tr style="border-bottom:1px solid #004d80;"><td style="color:#FFC107;padding:.45rem .8rem;font-weight:700;">+0.8</td><td style="color:#e6f1ff;padding:.45rem .8rem;">Large Cap + Mid Cap</td><td style="color:#ADD8E6;padding:.45rem .8rem;font-family:monospace;font-weight:700;">15.6%</td><td style="color:#8892b0;padding:.45rem .8rem;">−0.9%</td><td style="color:#FFC107;padding:.45rem .8rem;font-weight:700;">−5.5%</td></tr><tr style="border-bottom:1px solid #004d80;"><td style="color:#28a745;padding:.45rem .8rem;font-weight:700;">+0.5</td><td style="color:#e6f1ff;padding:.45rem .8rem;">Large Cap + Flexi Cap</td><td style="color:#ADD8E6;padding:.45rem .8rem;font-family:monospace;font-weight:700;">14.3%</td><td style="color:#8892b0;padding:.45rem .8rem;">−2.2%</td><td style="color:#28a745;padding:.45rem .8rem;font-weight:700;">−13.3%</td></tr><tr style="border-bottom:1px solid #004d80;"><td style="color:#28a745;padding:.45rem .8rem;font-weight:700;">0.0</td><td style="color:#e6f1ff;padding:.45rem .8rem;">Equity + Liquid Debt</td><td style="color:#ADD8E6;padding:.45rem .8rem;font-family:monospace;font-weight:700;">11.8%</td><td style="color:#8892b0;padding:.45rem .8rem;">−4.7%</td><td style="color:#28a745;padding:.45rem .8rem;font-weight:700;">−28.5%</td></tr><tr style="border-bottom:1px solid #004d80;"><td style="color:#00bfff;padding:.45rem .8rem;font-weight:700;">−0.2</td><td style="color:#e6f1ff;padding:.45rem .8rem;">Large Cap + Gold (typical)</td><td style="color:#ADD8E6;padding:.45rem .8rem;font-family:monospace;font-weight:700;">10.8%</td><td style="color:#8892b0;padding:.45rem .8rem;">−5.7%</td><td style="color:#00bfff;padding:.45rem .8rem;font-weight:700;">−34.5%</td></tr><tr style="border-bottom:1px solid #004d80;"><td style="color:#00bfff;padding:.45rem .8rem;font-weight:700;">−1.0</td><td style="color:#e6f1ff;padding:.45rem .8rem;">Perfect hedge (theoretical)</td><td style="color:#ADD8E6;padding:.45rem .8rem;font-family:monospace;font-weight:700;">1.5%</td><td style="color:#8892b0;padding:.45rem .8rem;">−15.0%</td><td style="color:#00bfff;padding:.45rem .8rem;font-weight:700;">Perfect hedge</td></tr>"""
+    _edu_strat = """<div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.75rem;"><div style="color:#FFD700;font-weight:700;font-size:.8rem;margin-bottom:4px;">Equal Weight (1/N)</div><div style="font-family:monospace;color:#ADD8E6;font-size:.73rem;margin-bottom:4px;">wᵢ = 1/N  for all i</div><div style="color:#8892b0;font-size:.71rem;">Simplest. For 5 funds: 20% each. No forecasting needed. Robust in practice.</div></div><div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.75rem;"><div style="color:#FFD700;font-weight:700;font-size:.8rem;margin-bottom:4px;">Risk Parity</div><div style="font-family:monospace;color:#ADD8E6;font-size:.73rem;margin-bottom:4px;">wᵢ ∝ 1/σᵢ  (normalised)</div><div style="color:#8892b0;font-size:.71rem;">Higher weight to lower-vol funds. Balances risk contribution rather than capital.</div></div><div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.75rem;"><div style="color:#FFD700;font-weight:700;font-size:.8rem;margin-bottom:4px;">Min-Variance</div><div style="font-family:monospace;color:#ADD8E6;font-size:.73rem;margin-bottom:4px;">min σ_p  s.t. Σwᵢ=1, wᵢ≥0</div><div style="color:#8892b0;font-size:.71rem;">Uses full covariance matrix. Solved via quadratic programming (scipy.optimize).</div></div><div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.75rem;"><div style="color:#FFD700;font-weight:700;font-size:.8rem;margin-bottom:4px;">Max Sharpe</div><div style="font-family:monospace;color:#ADD8E6;font-size:.73rem;margin-bottom:4px;">max (R_p − Rf) / σ_p</div><div style="color:#8892b0;font-size:.71rem;">Tangency portfolio on efficient frontier. Requires expected return forecasts.</div></div><div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.75rem;"><div style="color:#FFD700;font-weight:700;font-size:.8rem;margin-bottom:4px;">Goal-Based</div><div style="font-family:monospace;color:#ADD8E6;font-size:.73rem;margin-bottom:4px;">User-defined by objective</div><div style="color:#8892b0;font-size:.71rem;">e.g. 50% Large Cap + 20% Mid Cap + 15% Gold + 15% Debt for balanced growth.</div></div><div style="background:rgba(0,51,102,.45);border-radius:8px;padding:.75rem;"><div style="color:#FFD700;font-weight:700;font-size:.8rem;margin-bottom:4px;">AUM-Weighted</div><div style="font-family:monospace;color:#ADD8E6;font-size:.73rem;margin-bottom:4px;">wᵢ ∝ AUM of fund i</div><div style="color:#8892b0;font-size:.71rem;">Larger AUM funds get higher weight. Mimics passive / institutional allocation logic.</div></div>"""
+
+    st.html(f"""
+    <div style="color:#FFD700;-webkit-text-fill-color:#FFD700;
+      font-size:1.05rem;font-weight:900;margin:1rem 0 .6rem;user-select:none;">
+      🏗️ Portfolio Value and Weights — Formulas and Concepts
+    </div>
+    """)
+
+    _pc1, _pc2 = st.columns(2)
+    with _pc1:
+        st.html(f"""
+        <div style="background:#112240;border:1px solid #004d80;
+          border-radius:12px;padding:1rem 1.2rem;user-select:none;">
+          <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;
+            font-weight:800;font-size:.9rem;margin-bottom:.5rem;">
+            This App — How Fund Values Are Computed
+          </div>
+          <div style="color:#8892b0;-webkit-text-fill-color:#8892b0;
+            font-size:.78rem;margin-bottom:.6rem;line-height:1.5;">
+            Each fund is evaluated independently. Same lumpsum and SIP for all 5 funds.
+            No cross-fund weight allocation in the current version.
+          </div>
+          {_edu_html1}
+        </div>
+        """)
+    with _pc2:
+        st.html(f"""
+        <div style="background:#112240;border:1px solid #004d80;
+          border-radius:12px;padding:1rem 1.2rem;user-select:none;">
+          <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;
+            font-weight:800;font-size:.9rem;margin-bottom:.5rem;">
+            True Weighted Portfolio — Full Mathematical Framework
+          </div>
+          <div style="color:#8892b0;-webkit-text-fill-color:#8892b0;
+            font-size:.78rem;margin-bottom:.6rem;line-height:1.5;">
+            Assign weights w₁+w₂+…+w₅ = 1 across funds.
+            Portfolio volatility benefits from low pairwise correlations.
+          </div>
+          {_edu_html2}
+        </div>
+        """)
+
+    st.html(f"""
+    <div style="background:#112240;border:1px solid #004d80;border-radius:12px;
+      padding:1rem 1.2rem;margin-top:.7rem;user-select:none;">
+      <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;
+        font-weight:800;font-size:.9rem;margin-bottom:.6rem;">
+        📐 Correlation vs Portfolio Volatility — Numerical Example
+      </div>
+      <div style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.78rem;margin-bottom:.7rem;">
+        Two-fund equal-weight portfolio: Fund A Large Cap (σ=18%) + Fund B Gold (σ=15%), w=0.5 each.<br>
+        σ_p = √(0.25×18² + 0.25×15² + 2×0.5×0.5×18×15×ρ) &nbsp;|&nbsp; Weighted avg σ = 16.5%
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+          <thead>
+            <tr style="background:linear-gradient(135deg,#003366,#004d80);">
+              <th style="color:#FFD700;padding:.5rem .8rem;text-align:left;">Correlation ρ</th>
+              <th style="color:#FFD700;padding:.5rem .8rem;text-align:left;">Scenario</th>
+              <th style="color:#FFD700;padding:.5rem .8rem;text-align:left;">Portfolio σ_p</th>
+              <th style="color:#FFD700;padding:.5rem .8rem;text-align:left;">vs Wtd Avg 16.5%</th>
+              <th style="color:#FFD700;padding:.5rem .8rem;text-align:left;">Risk Saved</th>
+            </tr>
+          </thead>
+          <tbody>{_edu_corr}</tbody>
+        </table>
+      </div>
+      <div style="color:#8892b0;-webkit-text-fill-color:#8892b0;font-size:.73rem;margin-top:.5rem;">
+        ▸ ρ = −0.2 (Equity+Gold) saves ~34% portfolio risk vs two similar equity funds (ρ ≈ +1.0) at same expected return.
+        Match your Correlation heatmap values against this table to quantify your diversification benefit.
+      </div>
+    </div>
+
+    <div style="background:#112240;border:1px solid #004d80;border-radius:12px;
+      padding:1rem 1.2rem;margin-top:.7rem;margin-bottom:.7rem;user-select:none;">
+      <div style="color:#ADD8E6;-webkit-text-fill-color:#ADD8E6;
+        font-weight:800;font-size:.9rem;margin-bottom:.6rem;">
+        🎯 Weight Allocation Strategies — How Practitioners Assign wᵢ
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        {_edu_strat}
+      </div>
+    </div>
+    """)
+
     # ── SECTION 2: RISK FRAMEWORKS ────────────────────────────────────────────
+
     st.html(f"""
     <div style="color:{C['gold']};-webkit-text-fill-color:{C['gold']};
       font-size:1.05rem;font-weight:900;margin:1rem 0 .6rem;user-select:none;">
