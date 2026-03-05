@@ -1249,7 +1249,7 @@ def portfolio_weights_tab(funds):
         ⚖️ Portfolio Weights Creator
       </div>
       <div style="color:{LB};-webkit-text-fill-color:{LB};font-size:.9rem;">
-        Assign weights to your selected funds · See blended portfolio performance vs individual funds
+        Assign weights · Auto-normalise to 100% · See blended portfolio analytics
       </div>
     </div>
     """)
@@ -1260,71 +1260,119 @@ def portfolio_weights_tab(funds):
 
     n = len(funds)
 
-    # ── WEIGHT INPUT SECTION ──────────────────────────────────────────────────
-    slabel("⚖️", "Step 1 — Choose a Weighting Strategy", "Select a preset or enter custom weights")
+    # ── SESSION STATE: initialise weights once per fund set ───────────────────
+    fund_key = "pw_" + "_".join(str(f["code"]) for f in funds)
 
-    strategy = st.radio(
-        "Weighting Strategy",
-        ["Equal Weight (1/N)", "Risk Parity (1/σᵢ)", "Custom Weights"],
-        horizontal=True, label_visibility="collapsed", key="wt_strat"
+    def _set_weights(wlist):
+        """Store weights list into session state keys."""
+        for i, w in enumerate(wlist):
+            st.session_state[f"pw_w{i}_{fund_key}"] = float(round(w, 1))
+
+    def _get_weights():
+        return [float(st.session_state.get(f"pw_w{i}_{fund_key}", round(100/n, 1)))
+                for i in range(n)]
+
+    # First visit — initialise equal weights
+    if f"pw_w0_{fund_key}" not in st.session_state:
+        _set_weights([round(100/n, 1)] * n)
+
+    # ── STRATEGY PRESETS ──────────────────────────────────────────────────────
+    slabel("⚖️", "Step 1 — Choose a Weighting Strategy",
+           "Pick a preset to auto-fill weights, then adjust or auto-normalise")
+
+    strat_col, norm_col = st.columns([3, 1])
+    with strat_col:
+        strategy = st.radio(
+            "Strategy", ["Equal Weight (1/N)", "Risk Parity (1/σᵢ)", "Custom Weights"],
+            horizontal=True, label_visibility="collapsed", key="pw_strat"
+        )
+    with norm_col:
+        auto_norm = st.button("🔄 Auto-Normalise to 100%", key="pw_norm",
+                              use_container_width=True)
+
+    # Apply preset button — only triggers when user explicitly changes strategy
+    apply_preset = st.button(
+        f"▶ Apply {strategy.split('(')[0].strip()}",
+        key="pw_apply", use_container_width=False
     )
+    if apply_preset:
+        if strategy == "Equal Weight (1/N)":
+            _set_weights([round(100/n, 1)] * n)
+        elif strategy == "Risk Parity (1/σᵢ)":
+            sigmas = [f["m"]["vol"] for f in funds]
+            inv    = [1/s for s in sigmas]
+            tot    = sum(inv)
+            _set_weights([round(x/tot*100, 1) for x in inv])
+        # Custom: keep as-is
+        st.rerun()
 
-    # Compute default weights per strategy
-    if strategy == "Equal Weight (1/N)":
-        default_w = [round(1/n, 4)] * n
-    elif strategy == "Risk Parity (1/σᵢ)":
-        sigmas = [f["m"]["vol"] for f in funds]
-        inv_sig = [1/s for s in sigmas]
-        total = sum(inv_sig)
-        default_w = [round(x/total, 4) for x in inv_sig]
-    else:
-        default_w = [round(1/n, 4)] * n
+    # Apply auto-normalise
+    if auto_norm:
+        raw = _get_weights()
+        tot = sum(raw)
+        if tot > 0:
+            _set_weights([round(w/tot*100, 1) for w in raw])
+            # Fix rounding residual on largest weight
+            normed = _get_weights()
+            diff   = round(100.0 - sum(normed), 1)
+            if diff != 0:
+                max_i  = normed.index(max(normed))
+                normed[max_i] = round(normed[max_i] + diff, 1)
+                _set_weights(normed)
+        st.rerun()
 
-    # Weight sliders / inputs
+    # ── WEIGHT INPUTS ─────────────────────────────────────────────────────────
     st.html(f"""
     <div style="color:{G};-webkit-text-fill-color:{G};font-weight:700;
-      font-size:.85rem;margin:.8rem 0 .4rem;user-select:none;">
-      ✏️ Adjust Weights — must sum to 100%
+      font-size:.85rem;margin:.6rem 0 .3rem;user-select:none;">
+      ✏️ Fine-tune Weights below — or click Auto-Normalise
     </div>
     """)
 
-    weight_cols = st.columns(n)
+    wcols = st.columns(n)
     raw_weights = []
-    for i, (f, col) in enumerate(zip(funds, weight_cols)):
+    for i, (ff, col) in enumerate(zip(funds, wcols)):
         with col:
             st.html(f"""
-            <div style="background:{CA};border:1px solid {f['c']};
-              border-radius:8px;padding:.5rem .7rem;margin-bottom:.3rem;
+            <div style="background:{CA};border:1px solid {ff['c']};
+              border-radius:8px 8px 0 0;padding:.45rem .6rem;
               text-align:center;user-select:none;">
-              <div style="width:10px;height:10px;border-radius:50%;background:{f['c']};
-                margin:0 auto .3rem;box-shadow:0 0 5px {f['c']};"></div>
-              <div style="color:{f['c']};-webkit-text-fill-color:{f['c']};
-                font-size:.7rem;font-weight:700;white-space:nowrap;
+              <div style="width:9px;height:9px;border-radius:50%;
+                background:{ff['c']};margin:0 auto 3px;
+                box-shadow:0 0 5px {ff['c']};"></div>
+              <div style="color:{ff['c']};-webkit-text-fill-color:{ff['c']};
+                font-size:.68rem;font-weight:700;white-space:nowrap;
                 overflow:hidden;text-overflow:ellipsis;"
-                title="{f['name']}">
-                {f['name'][:22]}{'…' if len(f['name'])>22 else ''}
+                title="{ff['name']}">
+                {ff['name'][:20]}{'…' if len(ff['name'])>20 else ''}
               </div>
             </div>
             """)
-            w = st.number_input(
-                f"w{i+1}", min_value=0.0, max_value=100.0,
-                value=round(default_w[i]*100, 1), step=0.5,
-                format="%.1f", key=f"wt_{i}",
+            # Do NOT pass value= when key exists in session_state —
+            # that causes reset conflicts. Session state owns the value.
+            w_val = st.number_input(
+                f"Fund {i+1} weight",
+                min_value=0.0, max_value=100.0,
+                step=0.5, format="%.1f",
+                key=f"pw_w{i}_{fund_key}",
                 label_visibility="collapsed"
             )
-            raw_weights.append(w)
+            raw_weights.append(w_val)
 
-    # Weight validation
-    total_w = sum(raw_weights)
-    w_pct = [w/100 for w in raw_weights]
-    weights_ok = abs(total_w - 100.0) < 0.11
+    total_w   = round(sum(raw_weights), 1)
+    w_pct     = [w/100 for w in raw_weights]
+    weights_ok = abs(total_w - 100.0) < 0.15
 
-    # Weight status bar
+    # ── STATUS BAR ────────────────────────────────────────────────────────────
     bar_color = GR if weights_ok else RD
-    bar_msg   = "✅ Weights sum to 100% — ready to compute" if weights_ok else f"⚠️ Weights sum to {total_w:.1f}% — must equal 100%"
+    bar_msg   = "✅ Weights sum to 100% — ready to compute" if weights_ok else f"⚠️ Weights sum to {total_w:.1f}% — click 🔄 Auto-Normalise"
 
-    # Pre-build legend HTML — avoids quote conflicts inside f-strings
-    _legend_html = "".join([
+    bar_segs = "".join([
+        f'<div style="width:{w:.1f}%;background:{ff["c"]};height:100%;'
+        f'display:inline-block;" title="{ff["name"][:25]}: {w:.1f}%"></div>'
+        for ff, w in zip(funds, raw_weights) if w > 0
+    ])
+    legend_html = "".join([
         f'<div style="display:flex;align-items:center;gap:5px;">'
         f'<div style="width:10px;height:10px;border-radius:2px;background:{ff["c"]};"></div>'
         f'<span style="color:{MU};-webkit-text-fill-color:{MU};font-size:.72rem;">'
@@ -1332,64 +1380,61 @@ def portfolio_weights_tab(funds):
         for ff, rw in zip(funds, raw_weights)
     ])
 
-    # Visual weight bar
-    bar_segs = "".join([
-        f'<div style="width:{w:.1f}%;background:{f["c"]};height:100%;'
-        f'display:inline-block;" title="{f["name"][:25]}: {w:.1f}%"></div>'
-        for f, w in zip(funds, raw_weights) if w > 0
-    ])
     st.html(f"""
-    <div style="margin:.6rem 0;user-select:none;">
+    <div style="margin:.5rem 0 .8rem;user-select:none;">
       <div style="background:{CA};border:1px solid {bar_color};border-radius:8px;
-        padding:.5rem .9rem;display:flex;justify-content:space-between;align-items:center;
-        margin-bottom:.5rem;">
+        padding:.5rem .9rem;display:flex;justify-content:space-between;
+        align-items:center;margin-bottom:.4rem;">
         <span style="color:{bar_color};-webkit-text-fill-color:{bar_color};
           font-size:.82rem;font-weight:700;">{bar_msg}</span>
         <span style="color:{MU};-webkit-text-fill-color:{MU};font-size:.78rem;">
-          Total: <b style="color:{TX};-webkit-text-fill-color:{TX};">{total_w:.1f}%</b>
+          Total: <b style="color:{TX if weights_ok else RD};
+          -webkit-text-fill-color:{TX if weights_ok else RD};">{total_w:.1f}%</b>
         </span>
       </div>
-      <div style="height:14px;background:{CA};border-radius:6px;
-        overflow:hidden;border:1px solid {MD};">
-        {bar_segs}
-      </div>
-      <div style="display:flex;gap:16px;margin-top:.4rem;flex-wrap:wrap;">
-        {_legend_html}
+      <div style="height:12px;background:{CA};border-radius:6px;
+        overflow:hidden;border:1px solid {MD};">{bar_segs}</div>
+      <div style="display:flex;gap:14px;margin-top:.35rem;flex-wrap:wrap;">
+        {legend_html}
       </div>
     </div>
     """)
 
     if not weights_ok:
-        st.info(f"💡 Tip: Adjust sliders so they sum to exactly 100%. Currently {total_w:.1f}%")
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            st.info(f"💡 Weights currently sum to **{total_w:.1f}%**. "
+                    f"Click **🔄 Auto-Normalise to 100%** to fix instantly.")
+        with c2:
+            if st.button("🔄 Fix Now", key="pw_fix_now", use_container_width=True):
+                tot = sum(raw_weights)
+                if tot > 0:
+                    normed = [round(w/tot*100, 1) for w in raw_weights]
+                    diff   = round(100.0 - sum(normed), 1)
+                    if diff != 0:
+                        max_i = normed.index(max(normed))
+                        normed[max_i] = round(normed[max_i] + diff, 1)
+                    _set_weights(normed)
+                st.rerun()
         return
 
     # ── COMPUTE PORTFOLIO ─────────────────────────────────────────────────────
     slabel("📊", "Step 2 — Blended Portfolio Analytics",
-           "Weighted combination of all selected funds")
+           "Weighted combination · vs individual fund performance")
 
-    # Align all NAV series to common dates
-    nav_series = [f["m"]["nav"] for f in funds]
-    combined   = pd.concat(nav_series, axis=1, join="inner")
-    combined.columns = [f["name"][:25] for f in funds]
-    combined = combined.dropna()
+    # Align NAV series to common dates
+    nav_series = [ff["m"]["nav"] for ff in funds]
+    combined   = pd.concat(nav_series, axis=1, join="inner").dropna()
+    combined.columns = [ff["name"][:28] for ff in funds]
 
     if len(combined) < 20:
-        st.error("❌ Insufficient overlapping NAV dates across selected funds.")
+        st.error("❌ Insufficient overlapping NAV data across selected funds.")
         return
 
-    # Indexed NAVs (base 100)
-    indexed = combined / combined.iloc[0] * 100
-
-    # Weighted portfolio index
+    indexed  = combined / combined.iloc[0] * 100
     port_idx = (indexed * w_pct).sum(axis=1)
-
-    # Portfolio daily returns
     port_ret = port_idx.pct_change().dropna()
 
-    # Individual daily returns
-    indiv_ret = combined.pct_change().dropna()
-
-    # Portfolio metrics
     nyrs  = (port_idx.index[-1] - port_idx.index[0]).days / 365.25
     tot   = (port_idx.iloc[-1] / port_idx.iloc[0]) - 1
     cagr  = (1 + tot) ** (1 / nyrs) - 1
@@ -1397,71 +1442,59 @@ def portfolio_weights_tab(funds):
     shr   = (cagr - 0.065) / vol if vol > 0 else 0
     dd    = (port_idx - port_idx.cummax()) / port_idx.cummax()
     mxdd  = dd.min()
+    wa_cagr = sum(wp * ff["m"]["cagr"] for wp, ff in zip(w_pct, funds))
+    wa_vol  = sum(wp * ff["m"]["vol"]  for wp, ff in zip(w_pct, funds))
+    div_ben = (wa_vol - vol) / wa_vol * 100 if wa_vol > 0 else 0
 
-    # Weighted average metrics (for comparison)
-    wa_cagr = sum(w * f["m"]["cagr"] for w, f in zip(w_pct, funds))
-    wa_vol  = sum(w * f["m"]["vol"]  for w, f in zip(w_pct, funds))
-    div_ben = (wa_vol - vol) / wa_vol * 100  # diversification benefit %
-
-    # ── PORTFOLIO METRIC CARDS ────────────────────────────────────────────────
-    m1, m2, m3, m4, m5 = st.columns(5)
-    metric_data = [
-        (m1, "Portfolio CAGR",      fp(cagr),     fp(wa_cagr),     "vs Wtd Avg"),
-        (m2, "Portfolio Volatility", fp(vol),      fp(wa_vol),      "vs Wtd Avg"),
-        (m3, "Sharpe Ratio",        f"{shr:.2f}",  "Rf=6.5%",       ""),
-        (m4, "Max Drawdown",        fp(mxdd),      "",              ""),
-        (m5, "Diversif. Benefit",   f"{div_ben:.1f}%", "σ reduction","vs simple avg"),
+    # ── 5 METRIC CARDS ────────────────────────────────────────────────────────
+    cards = [
+        ("PORTFOLIO CAGR",      fp(cagr),     f"Wtd Avg: {fp(wa_cagr)}",
+         GR if cagr >= wa_cagr else RD),
+        ("PORTFOLIO VOLATILITY", fp(vol),      f"Wtd Avg: {fp(wa_vol)}",
+         GR if vol <= wa_vol else RD),
+        ("SHARPE RATIO",        f"{shr:.2f}",  "Rf = 6.5% p.a.",
+         GR if shr > 1 else (G if shr > 0 else RD)),
+        ("MAX DRAWDOWN",        fp(mxdd),      "Peak-to-trough",  RD),
+        ("DIVERSIF. BENEFIT",   f"{div_ben:.1f}%", "σ reduction vs Wtd Avg",
+         GR if div_ben > 3 else (G if div_ben > 0 else RD)),
     ]
-    for col, label, val, sub, sub2 in metric_data:
-        is_good = True
-        if "CAGR" in label:     is_good = cagr > wa_cagr
-        if "Volatility" in label: is_good = vol < wa_vol
-        if "Drawdown" in label:  is_good = True
-        if "Benefit" in label:   is_good = div_ben > 0
-        vc = GR if is_good else RD
-        if "Sharpe" in label:
-            vc = GR if shr > 1 else (G if shr > 0 else RD)
-        if "Drawdown" in label:
-            vc = RD
+    mcols = st.columns(5)
+    for col, (lbl, val, sub, vc) in zip(mcols, cards):
         with col:
             st.html(f"""
             <div style="background:{CA};border:1px solid {MD};
               border-radius:10px;padding:.8rem;text-align:center;user-select:none;">
               <div style="color:{MU};-webkit-text-fill-color:{MU};
-                font-size:.62rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
-                {label}
-              </div>
+                font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;
+                margin-bottom:4px;">{lbl}</div>
               <div style="color:{vc};-webkit-text-fill-color:{vc};
-                font-size:1.3rem;font-weight:900;margin-bottom:3px;">
-                {val}
-              </div>
-              {"" if not sub else f'<div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.68rem;">{sub}</div>'}
-              {"" if not sub2 else f'<div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.65rem;">{sub2}</div>'}
+                font-size:1.3rem;font-weight:900;margin-bottom:2px;">{val}</div>
+              <div style="color:{MU};-webkit-text-fill-color:{MU};
+                font-size:.68rem;">{sub}</div>
             </div>
             """)
 
     st.html(f"""<div style="height:1px;background:linear-gradient(90deg,
       transparent,{G},transparent);margin:.8rem 0;"></div>""")
 
-    # ── CHARTS ────────────────────────────────────────────────────────────────
+    # ── SUB-TABS ──────────────────────────────────────────────────────────────
     tab_a, tab_b, tab_c, tab_d = st.tabs([
-        "📈 Growth Comparison", "📉 Drawdown", "🥧 Weight Breakdown", "📋 Weight Report"
+        "📈 Growth", "📉 Drawdown", "🥧 Allocation", "📋 Report"
     ])
 
     with tab_a:
         fig = go.Figure()
-        for f, w in zip(funds, w_pct):
-            idx_s = indexed[f["name"][:25]]
+        for ff, wp in zip(funds, w_pct):
+            s = indexed[ff["name"][:28]]
             fig.add_trace(go.Scatter(
-                x=idx_s.index, y=np.round(idx_s.values, 2),
-                name=f"{f['name'][:22]} ({w*100:.0f}%)",
-                line=dict(color=f["c"], width=1.6, dash="dot"),
-                opacity=0.7,
-                hovertemplate=f"<b>{f['name'][:25]}</b><br>%{{x|%d %b %Y}}<br>%{{y:.1f}}<extra></extra>"
+                x=s.index, y=np.round(s.values, 2),
+                name=f"{ff['name'][:22]} ({wp*100:.0f}%)",
+                line=dict(color=ff["c"], width=1.6, dash="dot"), opacity=0.65,
+                hovertemplate=f"<b>{ff['name'][:25]}</b><br>%{{x|%d %b %Y}}<br>%{{y:.1f}}<extra></extra>"
             ))
         fig.add_trace(go.Scatter(
             x=port_idx.index, y=np.round(port_idx.values, 2),
-            name="⚖️ Weighted Portfolio",
+            name="⚖️ Portfolio",
             line=dict(color=G, width=3),
             hovertemplate="<b>Portfolio</b><br>%{x|%d %b %Y}<br>%{y:.1f}<extra></extra>"
         ))
@@ -1471,21 +1504,19 @@ def portfolio_weights_tab(funds):
 
     with tab_b:
         fig2 = go.Figure()
-        for f, w in zip(funds, w_pct):
-            idx_s = indexed[f["name"][:25]]
-            dd_i  = (idx_s - idx_s.cummax()) / idx_s.cummax() * 100
+        for ff, wp in zip(funds, w_pct):
+            s  = indexed[ff["name"][:28]]
+            di = (s - s.cummax()) / s.cummax() * 100
             fig2.add_trace(go.Scatter(
-                x=dd_i.index, y=np.round(dd_i.values, 2),
-                name=f"{f['name'][:22]} ({w*100:.0f}%)",
-                line=dict(color=f["c"], width=1.5, dash="dot"),
-                opacity=0.65,
-                hovertemplate=f"<b>{f['name'][:25]}</b><br>DD: %{{y:.2f}}%<extra></extra>"
+                x=di.index, y=np.round(di.values, 2),
+                name=f"{ff['name'][:22]} ({wp*100:.0f}%)",
+                line=dict(color=ff["c"], width=1.4, dash="dot"), opacity=0.6,
+                hovertemplate=f"<b>{ff['name'][:25]}</b><br>DD: %{{y:.2f}}%<extra></extra>"
             ))
-        port_dd = (port_idx - port_idx.cummax()) / port_idx.cummax() * 100
+        pdd = (port_idx - port_idx.cummax()) / port_idx.cummax() * 100
         fig2.add_trace(go.Scatter(
-            x=port_dd.index, y=np.round(port_dd.values, 2),
-            name="⚖️ Weighted Portfolio",
-            fill="tozeroy",
+            x=pdd.index, y=np.round(pdd.values, 2),
+            name="⚖️ Portfolio", fill="tozeroy",
             line=dict(color=G, width=2.5),
             hovertemplate="<b>Portfolio DD</b>: %{y:.2f}%<extra></extra>"
         ))
@@ -1494,103 +1525,88 @@ def portfolio_weights_tab(funds):
         st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
 
     with tab_c:
-        pc1, pc2 = st.columns([1, 1])
+        pc1, pc2 = st.columns(2)
         with pc1:
-            # Pie chart
             fig3 = go.Figure(go.Pie(
-                labels=[f["name"][:28] for f in funds],
-                values=w_pct,
+                labels=[ff["name"][:28] for ff in funds],
+                values=[round(wp*100, 1) for wp in w_pct],
                 hole=0.52,
-                marker=dict(
-                    colors=[f["c"] for f in funds],
-                    line=dict(color=CA, width=2)
-                ),
+                marker=dict(colors=[ff["c"] for ff in funds],
+                            line=dict(color=CA, width=2)),
                 textfont=dict(color=TX, size=11),
-                hovertemplate="<b>%{label}</b><br>Weight: %{percent}<extra></extra>"
+                hovertemplate="<b>%{label}</b><br>Weight: %{value:.1f}%<extra></extra>"
             ))
-            fig3.add_annotation(
-                text=f"<b>{n} Funds</b>",
-                x=0.5, y=0.5, font=dict(color=G, size=14),
-                showarrow=False
-            )
+            fig3.add_annotation(text=f"<b>{n} Funds</b>", x=0.5, y=0.5,
+                                font=dict(color=G, size=14), showarrow=False)
             fig3.update_layout(
-                height=360,
-                paper_bgcolor="rgba(0,0,0,0)",
+                height=340, paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(family="Inter", color=TX),
-                title=dict(text="🥧  Allocation Breakdown", font=dict(color=G, size=13), x=0.01),
-                legend=dict(bgcolor="rgba(17,34,64,.85)", bordercolor=MD,
+                title=dict(text="🥧  Allocation Breakdown",
+                           font=dict(color=G, size=13), x=0.01),
+                legend=dict(bgcolor=f"rgba(17,34,64,.85)", bordercolor=MD,
                             borderwidth=1, font=dict(color=TX, size=10)),
                 margin=dict(l=10, r=10, t=40, b=10)
             )
             st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
 
         with pc2:
-            # Volatility contribution bar
-            vol_contrib = [w * f["m"]["vol"] * 100 for w, f in zip(w_pct, funds)]
+            vc_list  = [round(wp * ff["m"]["vol"] * 100, 2) for wp, ff in zip(w_pct, funds)]
             fig4 = go.Figure(go.Bar(
-                x=[f["name"][:22] for f in funds],
-                y=vol_contrib,
-                marker_color=[f["c"] for f in funds],
-                text=[f"{v:.1f}%" for v in vol_contrib],
-                textposition="outside",
-                textfont=dict(color=TX),
-                hovertemplate="<b>%{x}</b><br>Vol contribution: %{y:.2f}%<extra></extra>"
+                x=[ff["name"][:20] for ff in funds],
+                y=vc_list,
+                marker_color=[ff["c"] for ff in funds],
+                text=[f"{v:.1f}%" for v in vc_list],
+                textposition="outside", textfont=dict(color=TX),
+                hovertemplate="<b>%{x}</b><br>wᵢσᵢ = %{y:.2f}%<extra></extra>"
             ))
             fig4.add_hline(y=wa_vol*100, line_dash="dash", line_color=MU,
-                           annotation_text=f"Wtd Avg σ={wa_vol*100:.1f}%",
-                           annotation_font=dict(color=MU))
+                           annotation_text=f"Wtd Avg σ = {wa_vol*100:.1f}%",
+                           annotation_font=dict(color=MU, size=10))
             fig4.update_layout(
-                height=360,
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(17,34,64,.55)",
+                height=340,
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(17,34,64,.55)",
                 font=dict(family="Inter", color=TX),
-                title=dict(text="📊  Volatility Contribution by Fund (wᵢ × σᵢ)",
+                title=dict(text="📊  Volatility Contribution (wᵢ × σᵢ)",
                            font=dict(color=G, size=13), x=0.01),
-                xaxis=dict(tickfont=dict(color=MU, size=9), gridcolor="rgba(0,77,128,.3)"),
-                yaxis=dict(tickfont=dict(color=MU), gridcolor="rgba(0,77,128,.3)",
-                           title_text="Vol contribution %", title_font=dict(color=MU)),
-                margin=dict(l=42, r=16, t=42, b=60),
-                showlegend=False
+                xaxis=dict(tickfont=dict(color=MU, size=9),
+                           gridcolor="rgba(0,77,128,.3)"),
+                yaxis=dict(tickfont=dict(color=MU), title_text="wᵢσᵢ (%)",
+                           title_font=dict(color=MU),
+                           gridcolor="rgba(0,77,128,.3)"),
+                margin=dict(l=42, r=16, t=40, b=60), showlegend=False
             )
             st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar": False})
 
-            # Diversification benefit callout
             div_clr = GR if div_ben > 5 else (G if div_ben > 0 else RD)
             st.html(f"""
             <div style="background:{CA};border:1px solid {div_clr};
-              border-radius:8px;padding:.7rem 1rem;margin-top:.3rem;text-align:center;
-              user-select:none;">
-              <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.7rem;">
-                Diversification Benefit
-              </div>
+              border-radius:8px;padding:.65rem 1rem;text-align:center;user-select:none;">
+              <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.68rem;">
+                Diversification Benefit</div>
               <div style="color:{div_clr};-webkit-text-fill-color:{div_clr};
-                font-size:1.4rem;font-weight:900;">{div_ben:.1f}%</div>
-              <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.7rem;">
-                Portfolio σ ({fp(vol)}) vs Weighted Avg σ ({fp(wa_vol)})
-              </div>
+                font-size:1.35rem;font-weight:900;">{div_ben:.1f}%</div>
+              <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.68rem;">
+                Portfolio σ {fp(vol)} vs Wtd Avg σ {fp(wa_vol)}</div>
             </div>
             """)
 
     with tab_d:
-        slabel("📋", "Weight Report — Full Comparison",
-               "Portfolio vs each individual fund")
+        slabel("📋", "Portfolio Weight Report", "Full breakdown + CSV export")
 
-        # Build report table
         rows = []
-        for f, w in zip(funds, w_pct):
-            m = f["m"]
+        for ff, wp in zip(funds, w_pct):
+            m = ff["m"]
             rows.append({
-                "Fund": f["name"][:40],
-                "Weight": f"{w*100:.1f}%",
-                "Wtd CAGR": fp(w * m["cagr"]),
-                "Fund CAGR": fp(m["cagr"]),
-                "Fund σ": fp(m["vol"]),
-                "Wtd σ": fp(w * m["vol"]),
-                "Sharpe": f"{m['sharpe']:.2f}",
-                "Max DD": fp(m["mxdd"]),
+                "Fund":        ff["name"][:40],
+                "Weight":      f"{wp*100:.1f}%",
+                "Wtd CAGR":   fp(wp * m["cagr"]),
+                "Fund CAGR":  fp(m["cagr"]),
+                "Fund σ":     fp(m["vol"]),
+                "Wtd σ":      fp(wp * m["vol"]),
+                "Sharpe":     f"{m['sharpe']:.2f}",
+                "Max DD":     fp(m["mxdd"]),
             })
-        # Add portfolio row
         rows.append({
             "Fund": "⚖️ BLENDED PORTFOLIO",
             "Weight": "100%",
@@ -1603,35 +1619,31 @@ def portfolio_weights_tab(funds):
         })
         df_rep = pd.DataFrame(rows).set_index("Fund")
         st.dataframe(df_rep, use_container_width=True,
-                     column_config={c: st.column_config.TextColumn(c) for c in df_rep.columns})
+                     column_config={c: st.column_config.TextColumn(c)
+                                    for c in df_rep.columns})
 
-        # Download
-        buf = io.BytesIO()
-        df_rep.to_csv(buf)
-        st.download_button(
-            "⬇ Export Portfolio Report (CSV)",
-            data=buf.getvalue(),
-            file_name=f"portfolio_weights_{datetime.today().strftime('%Y%m%d')}.csv",
-            mime="text/csv", key="dl_wt"
-        )
+        buf = io.BytesIO(); df_rep.to_csv(buf)
+        st.download_button("⬇ Export Portfolio Report (CSV)", data=buf.getvalue(),
+            file_name=f"portfolio_{datetime.today().strftime('%Y%m%d')}.csv",
+            mime="text/csv", key="dl_wt")
 
-        # Portfolio formula box
         formula_str = " + ".join([
-            f"{w*100:.0f}%×{f['name'][:15]}" for f, w in zip(funds, w_pct)
+            f"{wp*100:.0f}%×{ff['name'][:14]}" for ff, wp in zip(funds, w_pct)
         ])
         st.html(f"""
         <div style="background:{CA};border:1px solid {MD};border-radius:8px;
-          padding:.8rem 1rem;margin-top:.7rem;user-select:none;">
+          padding:.8rem 1rem;margin-top:.6rem;user-select:none;">
           <div style="color:{G};-webkit-text-fill-color:{G};font-weight:700;
             font-size:.82rem;margin-bottom:.4rem;">Your Portfolio Formula</div>
           <div style="font-family:monospace;color:{LB};-webkit-text-fill-color:{LB};
-            font-size:.78rem;line-height:1.6;word-break:break-word;">
+            font-size:.78rem;line-height:1.7;word-break:break-word;">
             P(t) = {formula_str}
           </div>
-          <div style="color:{MU};-webkit-text-fill-color:{MU};font-size:.72rem;margin-top:.4rem;">
+          <div style="color:{MU};-webkit-text-fill-color:{MU};
+            font-size:.72rem;margin-top:.4rem;">
             CAGR: {fp(cagr)} &nbsp;|&nbsp; σ: {fp(vol)} &nbsp;|&nbsp;
             Sharpe: {shr:.2f} &nbsp;|&nbsp; Max DD: {fp(mxdd)} &nbsp;|&nbsp;
-            Diversification Benefit: {div_ben:.1f}%
+            Diversif. Benefit: {div_ben:.1f}%
           </div>
         </div>
         """)
