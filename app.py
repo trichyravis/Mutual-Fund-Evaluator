@@ -76,30 +76,106 @@ def PL(title="", h=420):
         hoverlabel=dict(bgcolor=C["card"], bordercolor=C["mid"], font=dict(color=C["txt"])),
     )
 
-# ─── AMFI DATA ───────────────────────────────────────────────────────────────
+# ─── DEMO SCHEME LIST (used as fallback if AMFI API is unreachable) ──────────
+DEMO_SCHEMES = [
+    (100033, "SBI Blue Chip Fund - Regular Plan - Growth"),
+    (120503, "Mirae Asset Large Cap Fund - Regular Plan - Growth"),
+    (119598, "Axis Bluechip Fund - Regular Growth"),
+    (118834, "ICICI Prudential Bluechip Fund - Growth"),
+    (112090, "HDFC Top 100 Fund - Growth Plan"),
+    (120505, "Mirae Asset Emerging Bluechip Fund - Regular Plan - Growth"),
+    (119775, "Axis Midcap Fund - Regular Growth"),
+    (118989, "HDFC Mid-Cap Opportunities Fund - Growth"),
+    (120594, "DSP Midcap Fund - Regular Plan - Growth"),
+    (118272, "SBI Small Cap Fund - Regular Plan - Growth"),
+    (125354, "Axis Small Cap Fund - Regular Growth"),
+    (120843, "Nippon India Small Cap Fund - Growth Plan"),
+    (120503, "Axis Long Term Equity Fund - Regular Growth"),  # ELSS
+    (118825, "ICICI Prudential Long Term Equity Fund - Growth"),
+    (119597, "Axis Flexi Cap Fund - Regular Growth"),
+    (118701, "Parag Parikh Flexi Cap Fund - Regular Plan Growth"),
+    (120716, "UTI Nifty 50 Index Fund - Growth"),
+    (120847, "HDFC Index Fund Nifty 50 Plan"),
+    (120716, "Nippon India Index Fund Nifty 50 Plan - Growth"),
+    (101305, "HDFC Liquid Fund - Growth Option"),
+    (118701, "SBI Liquid Fund - Regular Plan - Growth"),
+    (119775, "ICICI Prudential Gilt Fund - Growth"),
+    (120594, "HDFC Balanced Advantage Fund - Growth"),
+    (118989, "ICICI Prudential Equity & Debt Fund - Growth"),
+    (120503, "SBI Gold Fund - Regular Plan - Growth"),
+    (119598, "Nippon India Gold Savings Fund - Growth Plan"),
+    (120843, "Motilal Oswal Nasdaq 100 FoF - Regular Growth"),
+    (118272, "ICICI Prudential US Bluechip Equity Fund - Growth"),
+    (125354, "Nippon India Banking & PSU Debt Fund - Growth"),
+    (120716, "SBI Banking & Financial Services Fund - Regular Growth"),
+]
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_schemes():
-    try:
-        r = requests.get("https://api.mfapi.in/mf", timeout=15)
-        df = pd.DataFrame(r.json(), columns=["scheme_code", "scheme_name"])
-        df["scheme_code"] = df["scheme_code"].astype(int)
-        return df
-    except:
-        return pd.DataFrame(columns=["scheme_code","scheme_name"])
+    """Fetch all MF schemes from AMFI. Falls back to demo list if unreachable."""
+    AMFI_URLS = [
+        "https://api.mfapi.in/mf",
+        "https://mfapi.in/mf",
+    ]
+    last_err = ""
+    for url in AMFI_URLS:
+        try:
+            r = requests.get(url, timeout=18)
+            r.raise_for_status()
+            raw = r.json()
+            if not raw:
+                continue
+            # API returns [{schemeCode, schemeName}, ...] or [[code, name], ...]
+            first = raw[0]
+            if isinstance(first, dict):
+                df = pd.DataFrame(raw)
+                df.columns = [c.lower().replace(" ","_") for c in df.columns]
+                rename_map = {}
+                for col in df.columns:
+                    if "code" in col: rename_map[col] = "scheme_code"
+                    if "name" in col: rename_map[col] = "scheme_name"
+                df = df.rename(columns=rename_map)
+            elif isinstance(first, (list, tuple)):
+                df = pd.DataFrame(raw, columns=["scheme_code", "scheme_name"])
+            else:
+                # Flat alternating list fallback
+                df = pd.DataFrame(raw, columns=["scheme_code", "scheme_name"])
+            df["scheme_code"] = pd.to_numeric(df["scheme_code"], errors="coerce")
+            df = df.dropna(subset=["scheme_code","scheme_name"])
+            df["scheme_code"] = df["scheme_code"].astype(int)
+            if len(df) > 50:
+                return df, "live"
+        except Exception as e:
+            last_err = str(e)
+            continue
+    # Fallback: curated demo list
+    df = pd.DataFrame(DEMO_SCHEMES, columns=["scheme_code","scheme_name"])
+    return df, f"demo|{last_err[:120]}"
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_nav(code:int, start:str, end:str):
-    try:
-        r = requests.get(f"https://api.mfapi.in/mf/{code}", timeout=20)
-        j = r.json()
-        df = pd.DataFrame(j["data"])
-        df["date"] = pd.to_datetime(df["date"], format="%d-%m-%Y")
-        df["nav"]  = pd.to_numeric(df["nav"], errors="coerce")
-        df = df.dropna().sort_values("date").set_index("date")
-        df = df[(df.index >= start) & (df.index <= end)]
-        return df["nav"], j.get("meta",{}).get("scheme_name","Fund")
-    except:
-        return None, "Error"
+    """Fetch historical NAV for a scheme from mfapi.in with retry."""
+    URLS = [
+        f"https://api.mfapi.in/mf/{code}",
+        f"https://mfapi.in/mf/{code}",
+    ]
+    for url in URLS:
+        try:
+            r = requests.get(url, timeout=22)
+            r.raise_for_status()
+            j = r.json()
+            if "data" not in j or len(j["data"]) == 0:
+                continue
+            df = pd.DataFrame(j["data"])
+            df["date"] = pd.to_datetime(df["date"], format="%d-%m-%Y")
+            df["nav"]  = pd.to_numeric(df["nav"], errors="coerce")
+            df = df.dropna().sort_values("date").set_index("date")
+            df = df[(df.index >= start) & (df.index <= end)]
+            name = j.get("meta",{}).get("scheme_name","Fund")
+            return df["nav"], name
+        except Exception:
+            continue
+    return None, "Error"
 
 def categorize(df):
     kw = {
@@ -442,6 +518,9 @@ def sidebar(schemes, catdf):
                 if len(cd): sels.append({"name":nm,"code":int(cd[0]),"c":col})
         st.html(f"""<div style="height:1px;background:{C['mid']};margin:9px 0;"></div>""")
         run=st.button("▶  ANALYSE PORTFOLIO",key="run",use_container_width=True)
+        if st.button("🔄  Refresh Scheme List", key="refresh", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
         st.html(f"""
         <div style="text-align:center;margin-top:1.2rem;padding:.7rem;
           background:{C['card']};border-radius:8px;border:1px solid {C['mid']};user-select:none;">
@@ -498,9 +577,17 @@ def welcome():
 def main():
     hero()
     with st.spinner("🔄 Loading AMFI scheme list…"):
-        schemes=load_schemes(); catdf=categorize(schemes)
+        result = load_schemes()
+        schemes, api_status = result if isinstance(result, tuple) else (result, "live")
+        catdf = categorize(schemes)
+    is_demo = str(api_status).startswith("demo")
     if schemes.empty:
-        st.error("❌ Could not fetch AMFI data."); return
+        st.error("❌ Could not load scheme data. Check your internet connection and try again.")
+        st.info("💡 The app connects to **api.mfapi.in** (free AMFI API). Make sure it is accessible from your machine.")
+        return
+    if is_demo:
+        err_detail = str(api_status).replace("demo|","")
+        st.warning(f"⚠️ **Demo Mode** — AMFI API unreachable. Showing 30 curated funds only.\n\n{err_detail}")
 
     sels,start,end,lump,sip,run=sidebar(schemes,catdf)
 
@@ -509,7 +596,7 @@ def main():
       padding:.42rem 1rem;margin-bottom:.8rem;
       display:flex;justify-content:space-between;align-items:center;user-select:none;">
       <span style="color:{C['muted']};-webkit-text-fill-color:{C['muted']};font-size:.76rem;">
-        📡&nbsp;Live data · {len(schemes):,} AMFI schemes · mfapi.in
+        {'📡 Live data · '+str(len(schemes))+' AMFI schemes · mfapi.in' if not is_demo else '⚠️ Demo Mode · '+str(len(schemes))+' curated funds · connect to mfapi.in for full access'}
       </span>
       <span style="color:{'#28a745' if sels else C['muted']};
         -webkit-text-fill-color:{'#28a745' if sels else C['muted']};
