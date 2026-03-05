@@ -385,7 +385,7 @@ def ch_rr(funds):
             hovertemplate=f"<b>{f['name'][:28]}</b><br>Volatility: {v:.1f}%<br>CAGR: {c:.1f}%<br>Sharpe: {s:.2f}<extra></extra>"))
     fig.add_hline(y=12,line_dash="dash",line_color=C["muted"],line_width=.8)
     fig.add_vline(x=15,line_dash="dash",line_color=C["muted"],line_width=.8)
-    fig.update_layout(**PL("⚖️  Risk–Return Map  (bubble size ∝ Sharpe)"),showlegend=False,height=430)
+    fig.update_layout(**PL("⚖️  Risk–Return Map  (bubble size ∝ Sharpe)",h=430),showlegend=False)
     fig.update_xaxes(title_text="Annualised Volatility (%)"); fig.update_yaxes(title_text="Period CAGR (%)"); return fig
 
 def ch_sip(funds,sip):
@@ -440,7 +440,7 @@ def ch_violin(funds):
         fig.add_trace(go.Violin(y=dr.values,name=f["name"][:22],
             box_visible=True,meanline_visible=True,
             fillcolor=f["c"],opacity=.55,line_color=f["c"]))
-    fig.update_layout(**PL("🎻  Daily Returns Distribution"),height=380)
+    fig.update_layout(**PL("🎻  Daily Returns Distribution",h=380))
     fig.update_yaxes(title_text="Daily Return (%)"); return fig
 
 # ─── TABLES ──────────────────────────────────────────────────────────────────
