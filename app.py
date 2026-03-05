@@ -1323,6 +1323,15 @@ def portfolio_weights_tab(funds):
     bar_color = GR if weights_ok else RD
     bar_msg   = "✅ Weights sum to 100% — ready to compute" if weights_ok else f"⚠️ Weights sum to {total_w:.1f}% — must equal 100%"
 
+    # Pre-build legend HTML — avoids quote conflicts inside f-strings
+    _legend_html = "".join([
+        f'<div style="display:flex;align-items:center;gap:5px;">'
+        f'<div style="width:10px;height:10px;border-radius:2px;background:{ff["c"]};"></div>'
+        f'<span style="color:{MU};-webkit-text-fill-color:{MU};font-size:.72rem;">'
+        f'{ff["name"][:22]}: {rw:.1f}%</span></div>'
+        for ff, rw in zip(funds, raw_weights)
+    ])
+
     # Visual weight bar
     bar_segs = "".join([
         f'<div style="width:{w:.1f}%;background:{f["c"]};height:100%;'
@@ -1345,7 +1354,7 @@ def portfolio_weights_tab(funds):
         {bar_segs}
       </div>
       <div style="display:flex;gap:16px;margin-top:.4rem;flex-wrap:wrap;">
-        {"".join([f'<div style="display:flex;align-items:center;gap:5px;"><div style="width:10px;height:10px;border-radius:2px;background:{f[chr(34)+chr(99)+chr(34)]};"></div><span style="color:{MU};-webkit-text-fill-color:{MU};font-size:.72rem;">{f[chr(34)+"name"+chr(34)][:22]}: {w:.1f}%</span></div>' for f,w in zip(funds,raw_weights)])}
+        {_legend_html}
       </div>
     </div>
     """)
